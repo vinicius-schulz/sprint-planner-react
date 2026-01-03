@@ -10,6 +10,7 @@ import { ConfigTab } from './features/config/ConfigTab';
 import { ImportExportTab } from './features/importExport/ImportExportTab';
 import { SummaryBoard } from './components/SummaryBoard';
 import { GanttTimeline } from './components/GanttTimeline';
+import { GanttTimelineFrappe } from './components/GanttTimelineFrappe';
 
 function App() {
   const [tab, setTab] = useState(0);
@@ -23,6 +24,7 @@ function App() {
         <SummaryBoard />
       </Box>
       <GanttTimeline />
+      {/* <GanttTimelineFrappe /> */}
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs
           value={tab}

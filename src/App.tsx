@@ -1,0 +1,66 @@
+import { useState } from 'react';
+import { Box, Container, Tab, Tabs, Typography } from '@mui/material';
+import './App.css';
+import { TabPanel } from './components/TabPanel';
+import { SprintTab } from './features/sprint/SprintTab';
+import { NonWorkingDaysTab } from './features/calendar/NonWorkingDaysTab';
+import { EventsTab } from './features/events/EventsTab';
+import { TeamTab } from './features/members/TeamTab';
+import { TasksTab } from './features/tasks/TasksTab';
+import { ConfigTab } from './features/config/ConfigTab';
+import { ImportExportTab } from './features/importExport/ImportExportTab';
+import { SummaryBoard } from './components/SummaryBoard';
+
+function App() {
+  const [tab, setTab] = useState(0);
+
+  return (
+    <Container className="appContainer" maxWidth="lg">
+      <Typography variant="h4" gutterBottom>
+        Calculadora de Capacidade Scrum
+      </Typography>
+      <Box sx={{ mb: 2 }}>
+        <SummaryBoard />
+      </Box>
+      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+        <Tabs
+          value={tab}
+          onChange={(_, newValue) => setTab(newValue)}
+          variant="scrollable"
+          scrollButtons="auto"
+        >
+          <Tab label="Sprint" />
+          <Tab label="Dias Não Úteis" />
+          <Tab label="Eventos" />
+          <Tab label="Time" />
+          <Tab label="Tarefas" />
+          <Tab label="Configurações" />
+          <Tab label="Export/Import" />
+        </Tabs>
+      </Box>
+      <TabPanel value={tab} index={0}>
+        <SprintTab />
+      </TabPanel>
+      <TabPanel value={tab} index={1}>
+        <NonWorkingDaysTab />
+      </TabPanel>
+      <TabPanel value={tab} index={2}>
+        <EventsTab />
+      </TabPanel>
+      <TabPanel value={tab} index={3}>
+        <TeamTab />
+      </TabPanel>
+      <TabPanel value={tab} index={4}>
+        <TasksTab />
+      </TabPanel>
+      <TabPanel value={tab} index={5}>
+        <ConfigTab />
+      </TabPanel>
+      <TabPanel value={tab} index={6}>
+        <ImportExportTab />
+      </TabPanel>
+    </Container>
+  );
+}
+
+export default App;

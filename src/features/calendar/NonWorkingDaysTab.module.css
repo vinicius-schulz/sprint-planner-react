@@ -1,0 +1,10 @@
+.row {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.list {
+  margin-top: 12px;
+}

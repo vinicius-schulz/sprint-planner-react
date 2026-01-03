@@ -1,0 +1,19 @@
+.formRow {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+
+.error {
+  color: #b91c1c;
+  font-size: 14px;
+  margin-top: 8px;
+}
+
+.metrics {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}

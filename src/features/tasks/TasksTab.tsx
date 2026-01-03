@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   IconButton,
   MenuItem,
   Table,
@@ -16,6 +17,7 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
+import Autocomplete from '@mui/material/Autocomplete';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
@@ -63,7 +65,7 @@ export function TasksTab() {
   const [name, setName] = useState('');
   const [assigneeMemberName, setAssigneeMemberName] = useState('');
   const [storyPoints, setStoryPoints] = useState(storyPointScale[0] ?? 1);
-  const [dependenciesText, setDependenciesText] = useState('');
+  const [dependenciesIds, setDependenciesIds] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [calcErrors, setCalcErrors] = useState<string[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -75,10 +77,7 @@ export function TasksTab() {
   }, [storyPointScale]);
 
   const handleAdd = () => {
-    const dependencies = dependenciesText
-      .split(',')
-      .map((d) => d.trim())
-      .filter((d) => d.length > 0);
+    const dependencies = dependenciesIds.filter((d, idx, arr) => arr.indexOf(d) === idx);
     const base: Omit<TaskItem, 'computedEndDate' | 'computedStartDate'> = {
       id: generateTaskId(),
       name,
@@ -96,7 +95,7 @@ export function TasksTab() {
     setName('');
     setAssigneeMemberName('');
     setStoryPoints(storyPointScale[0] ?? 1);
-    setDependenciesText('');
+    setDependenciesIds([]);
   };
 
   const handleTaskUpdate = (
@@ -106,12 +105,9 @@ export function TasksTab() {
     dispatch(updateTask({ id, updates }));
   };
 
-  const handleDependenciesUpdate = (id: string, value: string) => {
-    const dependencies = value
-      .split(',')
-      .map((d) => d.trim())
-      .filter((d) => d.length > 0);
-    handleTaskUpdate(id, { dependencies });
+  const handleDependenciesUpdate = (id: string, value: string[]) => {
+    const filtered = value.filter((d, idx, arr) => arr.indexOf(d) === idx && d !== id);
+    handleTaskUpdate(id, { dependencies: filtered });
   };
 
   const handleDragStart = (taskId: string, event: DragEvent<HTMLButtonElement>) => {
@@ -148,6 +144,11 @@ export function TasksTab() {
     setDragOverId(null);
   };
 
+  const dependencyOptions = useMemo(
+    () => tasks.map((t) => ({ label: `${t.id} - ${t.name}`, value: t.id })),
+    [tasks],
+  );
+
   const handleOpenInfo = (task: TaskItem) => setInfoTask(task);
   const handleCloseInfo = () => setInfoTask(null);
 
@@ -180,7 +181,32 @@ export function TasksTab() {
     }
   }, [tasks, sprint, calendar, config, members, events, dispatch]);
 
+  const isAfterSprint = (task: TaskItem) => {
+    if (!sprint.endDate) return false;
+    const endDate = task.computedTimeline?.[task.computedTimeline.length - 1]?.date;
+    if (endDate) return endDate > sprint.endDate;
+    const match = task.computedEndDate?.match(/^(\d{2})\/(\d{2})\/(\d{4})/);
+    if (match) {
+      const iso = `${match[3]}-${match[2]}-${match[1]}`;
+      return iso > sprint.endDate;
+    }
+    return false;
+  };
+
+  const overshootFromErrors = useMemo(() => {
+    const ids = new Set<string>();
+    calcErrors.forEach((msg) => {
+      if (!/ultrapassa/i.test(msg)) return;
+      const m = msg.match(/Tarefa\s+(\w+)/i);
+      if (m?.[1]) ids.add(m[1]);
+    });
+    return ids;
+  }, [calcErrors]);
+
+  const overshootTasks = useMemo(() => tasks.filter((t) => isAfterSprint(t)), [tasks, sprint.endDate]);
+
   const getRowClass = (task: TaskItem, runningTotals: Map<string, number>) => {
+    if (isAfterSprint(task) || overshootFromErrors.has(task.id)) return styles.statusRed;
     const memberName = task.assigneeMemberName;
     if (!memberName) return styles.statusGreen;
     const capacity = capacityByMember.get(memberName) ?? 0;
@@ -225,13 +251,44 @@ export function TasksTab() {
             ))}
           </TextField>
           <TextField
-            label="Dependências (IDs, separado por vírgula)"
-            value={dependenciesText}
-            onChange={(e) => setDependenciesText(e.target.value)}
+            label="Dependências"
+            value=""
+            sx={{ display: 'none' }}
+            aria-hidden
+          />
+          <Autocomplete
+            multiple
+            options={dependencyOptions}
+            getOptionLabel={(o) => o.label}
+            value={dependencyOptions.filter((o) => dependenciesIds.includes(o.value))}
+            onChange={(_, newValue) => setDependenciesIds(newValue.map((o) => o.value))}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                <Chip label={option.value} {...getTagProps({ index })} />
+              ))
+            }
+            renderInput={(params) => (
+              <TextField {...params} label="Dependências" placeholder="Selecionar" />
+            )}
+            filterSelectedOptions
+            disableCloseOnSelect
+            clearOnBlur
+            blurOnSelect={false}
+            ListboxProps={{ style: { maxHeight: 240 } }}
           />
           <Button variant="contained" onClick={handleAdd}>Adicionar Tarefa</Button>
         </div>
         {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
+        {overshootTasks.length + overshootFromErrors.size > 0 && (
+          <Alert severity="warning" sx={{ mt: 1 }}>
+            Tarefas fora do fim da sprint: {
+              [...new Set([...
+                overshootTasks.map((t) => `${t.id} (${t.name})`),
+                ...[...overshootFromErrors].map((id) => id),
+              ])].join(', ')
+            }. Considere repriorizar ou ajustar capacidade.
+          </Alert>
+        )}
         {calcErrors.map((err) => (
           <Alert key={err} severity="error" sx={{ mt: 1 }}>{err}</Alert>
         ))}
@@ -326,13 +383,31 @@ export function TasksTab() {
                       <TableCell>{formatDateTimeBr(task.computedStartDate)}</TableCell>
                       <TableCell>{formatDateTimeBr(task.computedEndDate)}</TableCell>
                       <TableCell>
-                        <TextField
-                          variant="standard"
-                          value={task.dependencies.join(', ')}
-                          onChange={(e) => handleDependenciesUpdate(task.id, e.target.value)}
-                          placeholder="Dep. IDs"
-                          fullWidth
-                          size="small"
+                        <Autocomplete
+                          multiple
+                          options={dependencyOptions.filter((o) => o.value !== task.id)}
+                          getOptionLabel={(o) => o.label}
+                          value={dependencyOptions.filter((o) => task.dependencies.includes(o.value))}
+                          onChange={(_, newValue) => handleDependenciesUpdate(task.id, newValue.map((o) => o.value))}
+                          renderTags={(value, getTagProps) =>
+                            value.map((option, index) => (
+                              <Chip label={option.value} size="small" {...getTagProps({ index })} />
+                            ))
+                          }
+                          renderInput={(params) => (
+                            <TextField
+                              {...params}
+                              variant="standard"
+                              placeholder="Dep. IDs"
+                              fullWidth
+                              size="small"
+                            />
+                          )}
+                          filterSelectedOptions
+                          disableCloseOnSelect
+                          clearOnBlur
+                          blurOnSelect={false}
+                          ListboxProps={{ style: { maxHeight: 240 } }}
                         />
                       </TableCell>
                       <TableCell>

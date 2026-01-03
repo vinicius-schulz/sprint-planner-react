@@ -251,7 +251,47 @@ export const computeTaskSchedules = (
 
   const completed = new Map<string, { dayIndex: number; minuteOffset: number }>();
   const lastEndByAssignee = new Map<string, { dayIndex: number; minuteOffset: number }>();
-  const ordered = [...tasks];
+  const taskMap = new Map(tasks.map((t) => [t.id, t]));
+
+  tasks.forEach((t) => {
+    (t.dependencies || []).forEach((depId) => {
+      if (!taskMap.has(depId)) {
+        errors.push(`Dependência ${depId} não encontrada para tarefa ${t.id}.`);
+      }
+    });
+  });
+
+  // Topological order to ensure dependencies are scheduled before dependents
+  const indegree = new Map<string, number>();
+  tasks.forEach((t) => indegree.set(t.id, 0));
+  tasks.forEach((t) => {
+    (t.dependencies || []).forEach((depId) => {
+      if (!taskMap.has(depId)) return;
+      indegree.set(t.id, (indegree.get(t.id) ?? 0) + 1);
+    });
+  });
+
+  const queue: TaskItem[] = [];
+  tasks.forEach((t) => {
+    if ((indegree.get(t.id) ?? 0) === 0) queue.push(t);
+  });
+
+  const ordered: TaskItem[] = [];
+  while (queue.length) {
+    const current = queue.shift()!;
+    ordered.push(current);
+    tasks.forEach((t) => {
+      if (!t.dependencies?.includes(current.id)) return;
+      const val = (indegree.get(t.id) ?? 0) - 1;
+      indegree.set(t.id, val);
+      if (val === 0) queue.push(t);
+    });
+  }
+
+  if (ordered.length !== tasks.length) {
+    const cyclic = tasks.filter((t) => !ordered.includes(t)).map((t) => t.id).join(', ');
+    errors.push(`Dependências cíclicas ou inválidas entre: ${cyclic || 'tarefas'}.`);
+  }
   const resultTasks: TaskItem[] = [];
 
   ordered.forEach((task) => {
@@ -273,10 +313,7 @@ export const computeTaskSchedules = (
 
     deps.forEach((depId) => {
       const dep = completed.get(depId);
-      if (!dep) {
-        errors.push(`Dependência ${depId} não encontrada para tarefa ${task.id}.`);
-        return;
-      }
+      if (!dep) return; // already reported missing or cycle; skip shift
       if (dep.dayIndex > earliestPointer.dayIndex || (dep.dayIndex === earliestPointer.dayIndex && dep.minuteOffset > earliestPointer.minuteOffset)) {
         earliestPointer = { ...dep };
       }
@@ -341,7 +378,9 @@ export const computeTaskSchedules = (
     }
 
     if (remaining > 0 || !startStamp || !endStamp) {
-      errors.push(`Não foi possível calcular data final para tarefa ${task.id}.`);
+      errors.push(
+        `Tarefa ${task.id} ultrapassa o fim da sprint (${formatDate(sprint.endDate)}). Ajuste ordem, dependências ou capacidade.`,
+      );
       return;
     }
 

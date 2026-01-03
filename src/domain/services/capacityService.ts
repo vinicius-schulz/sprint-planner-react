@@ -10,6 +10,7 @@ import type {
   RootPersistedState,
   SprintState,
   TaskItem,
+  TaskWorkDetail,
   TaskWorkSegment,
   WorkingPeriod,
 } from '../types';
@@ -186,6 +187,15 @@ export const computeTaskSchedules = (
 
   const memberByName = new Map<string, Member>(members.map((m) => [m.name, m]));
 
+  const eventsDetailByDate = new Map<string, { label: string; minutes: number }[]>();
+  events.forEach((ev) => {
+    if (ev.recurringDaily) return;
+    const label = ev.description?.trim() || ev.type;
+    const list = eventsDetailByDate.get(ev.date) ?? [];
+    list.push({ label, minutes: ev.minutes });
+    eventsDetailByDate.set(ev.date, list);
+  });
+
   const timeToMinutes = (time: string): number => {
     const match = time?.match(/^(\d{2}):(\d{2})$/);
     if (!match) return 0;
@@ -307,7 +317,24 @@ export const computeTaskSchedules = (
       endStamp = { dayIndex: currentDay, minuteOffset: endOffset };
       const startClockChunk = offsetToClock(day.periods, startOffset);
       const endClockChunk = offsetToClock(day.periods, endOffset);
-      timeline.push({ date: day.date, startTime: startClockChunk, endTime: endClockChunk, minutes: take });
+      const baseMinutesRaw = periodsMinutes(day.periods);
+      const eventMinutes = eventsByDate.get(day.date) ?? 0;
+      const detail: TaskWorkDetail = {
+        periods: day.periods,
+        baseMinutes: Math.max(0, baseMinutesRaw),
+        eventMinutes,
+        recurringMinutes: recurringDailyMinutes,
+        capacityMinutes: capacity,
+        availabilityPercent: assignee?.availabilityPercent ?? 100,
+        seniorityFactor: assignee ? config.seniorityFactors[assignee.seniority] ?? 1 : 1,
+        maturityFactor: assignee ? config.maturityFactors[assignee.maturity] ?? 1 : 1,
+        usedBeforeMinutes: used,
+        events: [
+          ...(eventsDetailByDate.get(day.date) ?? []),
+          ...(recurringDailyMinutes ? [{ label: 'Recorrente diário', minutes: recurringDailyMinutes }] : []),
+        ],
+      };
+      timeline.push({ date: day.date, startTime: startClockChunk, endTime: endClockChunk, minutes: take, detail });
       setUsage(assigneeKey, currentDay, startOffset, take);
       remaining -= take;
       if (remaining > 0) currentDay += 1;

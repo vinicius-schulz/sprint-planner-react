@@ -47,3 +47,10 @@
   flex-direction: column;
   gap: 4px;
 }
+
+.infoDetailBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+}

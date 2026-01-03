@@ -56,6 +56,20 @@ export interface TaskWorkSegment {
   startTime: string; // HH:mm
   endTime: string;   // HH:mm
   minutes: number;
+  detail?: TaskWorkDetail;
+}
+
+export interface TaskWorkDetail {
+  periods: WorkingPeriod[];
+  baseMinutes: number;
+  eventMinutes: number;
+  recurringMinutes: number;
+  capacityMinutes: number;
+  availabilityPercent: number;
+  seniorityFactor: number;
+  maturityFactor: number;
+  usedBeforeMinutes: number;
+  events: { label: string; minutes: number }[];
 }
 
 export interface GlobalConfig {

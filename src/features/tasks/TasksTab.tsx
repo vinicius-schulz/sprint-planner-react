@@ -6,10 +6,6 @@ import {
   Button,
   Card,
   CardContent,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   IconButton,
   MenuItem,
   Table,
@@ -28,6 +24,7 @@ import { validateTask } from '../../domain/services/validators';
 import { computeTaskSchedules, selectTeamCapacity } from '../../domain/services/capacityService';
 import type { TaskItem } from '../../domain/types';
 import { DEFAULT_CONFIG } from '../../domain/constants';
+import { TaskInfoDialog } from './TaskInfoDialog';
 import styles from './TasksTab.module.css';
 
 const generateTaskId = () => Math.random().toString(36).slice(2, 6).toUpperCase();
@@ -375,34 +372,7 @@ export function TasksTab() {
           </Table>
         </div>
       </CardContent>
-      <Dialog open={!!infoTask} onClose={handleCloseInfo} fullWidth maxWidth="sm">
-        <DialogTitle>Detalhes da tarefa</DialogTitle>
-        <DialogContent dividers>
-          {infoTask && (
-            <div className={styles.infoDialogContent}>
-              <Typography variant="subtitle1" gutterBottom>{infoTask.name}</Typography>
-              <Typography variant="body2">ID: {infoTask.id}</Typography>
-              <Typography variant="body2">Responsável: {infoTask.assigneeMemberName || '—'}</Typography>
-              <Typography variant="body2">Início: {formatDateTimeBr(infoTask.computedStartDate)}</Typography>
-              <Typography variant="body2" gutterBottom>Fim: {formatDateTimeBr(infoTask.computedEndDate)}</Typography>
-              <Typography variant="subtitle2" gutterBottom>Plano por dia</Typography>
-              {!infoTask.computedTimeline?.length && (
-                <Typography variant="body2" color="text.secondary">
-                  Calcule as datas para ver o cronograma detalhado.
-                </Typography>
-              )}
-              {infoTask.computedTimeline?.map((seg) => (
-                <Typography key={`${seg.date}-${seg.startTime}-${seg.endTime}`} variant="body2">
-                  {formatDateTimeBr(`${seg.date} ${seg.startTime}`)} - {seg.endTime} ({seg.minutes} min)
-                </Typography>
-              ))}
-            </div>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseInfo}>Fechar</Button>
-        </DialogActions>
-      </Dialog>
+      <TaskInfoDialog open={!!infoTask} task={infoTask} onClose={handleCloseInfo} formatDateTime={formatDateTimeBr} />
     </Card>
   );
 }

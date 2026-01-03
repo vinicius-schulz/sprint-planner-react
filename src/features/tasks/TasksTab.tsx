@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Alert,
   Button,
@@ -18,9 +18,12 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { addTask, removeTask, setComputedTasks } from './tasksSlice';
 import { validateTask } from '../../domain/services/validators';
-import { computeTaskSchedules, buildWorkingCalendar } from '../../domain/services/capacityService';
+import { computeTaskSchedules, buildWorkingCalendar, selectTeamCapacity } from '../../domain/services/capacityService';
 import type { TaskItem } from '../../domain/types';
+import { DEFAULT_CONFIG } from '../../domain/constants';
 import styles from './TasksTab.module.css';
+
+const generateTaskId = () => Math.random().toString(36).slice(2, 6).toUpperCase();
 
 export function TasksTab() {
   const dispatch = useAppDispatch();
@@ -29,16 +32,22 @@ export function TasksTab() {
   const sprint = useAppSelector((state) => state.sprint);
   const calendar = useAppSelector((state) => state.calendar);
   const config = useAppSelector((state) => state.config.value);
+  const teamCapacity = useAppSelector(selectTeamCapacity);
 
-  const [id, setId] = useState('');
+  const storyPointScale = config.storyPointScale?.length ? config.storyPointScale : DEFAULT_CONFIG.storyPointScale;
+
   const [name, setName] = useState('');
   const [assigneeMemberName, setAssigneeMemberName] = useState('');
-  const [storyPoints, setStoryPoints] = useState(1);
+  const [storyPoints, setStoryPoints] = useState(storyPointScale[0] ?? 1);
   const [dependenciesText, setDependenciesText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [calcErrors, setCalcErrors] = useState<string[]>([]);
 
   const workingCalendar = useMemo(() => buildWorkingCalendar(sprint, calendar), [sprint, calendar]);
+
+  useEffect(() => {
+    setStoryPoints(storyPointScale[0] ?? 1);
+  }, [storyPointScale]);
 
   const handleAdd = () => {
     const dependencies = dependenciesText
@@ -46,7 +55,7 @@ export function TasksTab() {
       .map((d) => d.trim())
       .filter((d) => d.length > 0);
     const base: Omit<TaskItem, 'computedEndDate' | 'computedStartDate'> = {
-      id,
+      id: generateTaskId(),
       name,
       assigneeMemberName: assigneeMemberName || undefined,
       storyPoints: Number(storyPoints),
@@ -59,10 +68,9 @@ export function TasksTab() {
     }
     setError(null);
     dispatch(addTask({ ...base }));
-    setId('');
     setName('');
     setAssigneeMemberName('');
-    setStoryPoints(1);
+    setStoryPoints(storyPointScale[0] ?? 1);
     setDependenciesText('');
   };
 
@@ -74,12 +82,34 @@ export function TasksTab() {
     }
   };
 
+  const capacityByMember = useMemo(() => {
+    const map = new Map<string, number>();
+    teamCapacity.members.forEach((mc) => map.set(mc.member.name, mc.storyPoints));
+    return map;
+  }, [teamCapacity]);
+
+  const getRowClass = (task: TaskItem, runningTotals: Map<string, number>) => {
+    const memberName = task.assigneeMemberName;
+    if (!memberName) return styles.statusGreen;
+    const capacity = capacityByMember.get(memberName) ?? 0;
+    const currentTotal = (runningTotals.get(memberName) ?? 0) + task.storyPoints;
+    runningTotals.set(memberName, currentTotal);
+    if (capacity <= 0 && currentTotal > 0) return styles.statusRed;
+    const ratio = currentTotal / capacity;
+    if (ratio <= 1) return styles.statusGreen;
+    const warnLimit = 1 + config.workloadWarningOver;
+    const errLimit = 1 + config.workloadErrorOver;
+    const threshold = Math.max(warnLimit, errLimit);
+    if (ratio <= warnLimit) return styles.statusYellow;
+    if (ratio <= threshold) return styles.statusRed;
+    return styles.statusRed;
+  };
+
   return (
     <Card>
       <CardContent>
         <Typography variant="h6" gutterBottom>Tarefas</Typography>
         <div className={styles.form}>
-          <TextField label="ID" value={id} onChange={(e) => setId(e.target.value)} />
           <TextField label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
           <TextField
             select
@@ -93,11 +123,15 @@ export function TasksTab() {
             ))}
           </TextField>
           <TextField
+            select
             label="Story Points"
-            type="number"
             value={storyPoints}
             onChange={(e) => setStoryPoints(Number(e.target.value))}
-          />
+          >
+            {storyPointScale.map((sp) => (
+              <MenuItem key={sp} value={sp}>{sp}</MenuItem>
+            ))}
+          </TextField>
           <TextField
             label="Dependências (IDs, separado por vírgula)"
             value={dependenciesText}
@@ -130,22 +164,28 @@ export function TasksTab() {
                   <TableCell colSpan={8}>Nenhuma tarefa cadastrada.</TableCell>
                 </TableRow>
               )}
-              {tasks.map((task) => (
-                <TableRow key={task.id} hover>
-                  <TableCell>{task.id}</TableCell>
-                  <TableCell>{task.name}</TableCell>
-                  <TableCell>{task.storyPoints}</TableCell>
-                  <TableCell>{task.computedStartDate || '-'}</TableCell>
-                  <TableCell>{task.computedEndDate || '-'}</TableCell>
-                  <TableCell>{task.dependencies.join(', ') || '-'}</TableCell>
-                  <TableCell>{task.assigneeMemberName || '-'}</TableCell>
-                  <TableCell align="right">
-                    <IconButton aria-label="remover" onClick={() => dispatch(removeTask(task.id))}>
-                      <DeleteIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {(() => {
+                const runningTotals = new Map<string, number>();
+                return tasks.map((task) => {
+                  const rowClass = getRowClass(task, runningTotals);
+                  return (
+                    <TableRow key={task.id} hover className={rowClass}>
+                      <TableCell>{task.id}</TableCell>
+                      <TableCell>{task.name}</TableCell>
+                      <TableCell>{task.storyPoints}</TableCell>
+                      <TableCell>{task.computedStartDate || '-'}</TableCell>
+                      <TableCell>{task.computedEndDate || '-'}</TableCell>
+                      <TableCell>{task.dependencies.join(', ') || '-'}</TableCell>
+                      <TableCell>{task.assigneeMemberName || '-'}</TableCell>
+                      <TableCell align="right">
+                        <IconButton aria-label="remover" onClick={() => dispatch(removeTask(task.id))}>
+                          <DeleteIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  );
+                });
+              })()}
             </TableBody>
           </Table>
         </div>

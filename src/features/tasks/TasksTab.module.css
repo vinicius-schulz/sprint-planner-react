@@ -8,3 +8,15 @@
 .list {
   margin-top: 16px;
 }
+
+.statusGreen {
+  background-color: #ecfdf3;
+}
+
+.statusYellow {
+  background-color: #fef9c3;
+}
+
+.statusRed {
+  background-color: #fee2e2;
+}

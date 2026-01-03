@@ -55,6 +55,9 @@ export interface GlobalConfig {
   maturityFactors: Record<string, number>;
   storyPointsPerHour: number;
   countedMemberTypes: string[];
+  storyPointScale: number[];
+  workloadWarningOver: number; // fraction over 1.0 (e.g., 0.1 => 10%)
+  workloadErrorOver: number;   // fraction over 1.0 for red threshold
 }
 
 export interface RootPersistedState {

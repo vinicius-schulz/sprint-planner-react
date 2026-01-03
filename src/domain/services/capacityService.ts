@@ -128,8 +128,9 @@ export const computeTaskSchedules = (
   if (!workingDays.length) return { tasks, errors: ['Não há dias úteis na Sprint para agendar tarefas.'] };
 
   const workingSet = new Set(workingDays);
-  const ordered = [...tasks].sort((a, b) => a.id.localeCompare(b.id));
+  const ordered = [...tasks];
   const completed = new Map<string, { start: string; end: string }>();
+  const lastEndByAssignee = new Map<string, string>();
 
   const firstWorking = firstWorkingDayOnOrAfter(start, workingSet);
   if (!firstWorking) return { tasks, errors: ['Não foi possível encontrar dia útil para início da Sprint.'] };
@@ -139,6 +140,14 @@ export const computeTaskSchedules = (
   ordered.forEach((task) => {
     const deps = task.dependencies || [];
     let startDate = new Date(firstWorking);
+
+    const assigneeEnd = task.assigneeMemberName ? lastEndByAssignee.get(task.assigneeMemberName) : null;
+    if (assigneeEnd) {
+      const afterAssignee = nextWorkingDay(toDate(assigneeEnd)!, workingSet);
+      if (afterAssignee && afterAssignee > startDate) {
+        startDate = afterAssignee;
+      }
+    }
 
     if (deps.includes(task.id)) {
       errors.push(`Tarefa ${task.id} não pode depender de si mesma.`);
@@ -179,11 +188,13 @@ export const computeTaskSchedules = (
     const startIso = toISODate(startDate);
     const endIso = toISODate(endDate);
     completed.set(task.id, { start: startIso, end: endIso });
+    if (task.assigneeMemberName) {
+      lastEndByAssignee.set(task.assigneeMemberName, endIso);
+    }
     resultTasks.push({ ...task, computedStartDate: startIso, computedEndDate: endIso });
   });
 
-  const sorted = resultTasks.sort((a, b) => a.id.localeCompare(b.id));
-  return { tasks: sorted, errors };
+  return { tasks: resultTasks, errors };
 };
 
 // Selectors helpers

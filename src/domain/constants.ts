@@ -6,6 +6,9 @@ export const DEFAULT_CONFIG: GlobalConfig = {
   maturityFactors: { Plena: 1.0, Mediana: 0.8, Inicial: 0.6 },
   storyPointsPerHour: 0.25,
   countedMemberTypes: ['Desenvolvedor', 'Tester'],
+  storyPointScale: [0, 1, 3, 5, 8, 13, 21],
+  workloadWarningOver: 0.1,
+  workloadErrorOver: 0.2,
 };
 
 export const EMPTY_SPRINT: SprintState = {

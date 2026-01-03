@@ -47,6 +47,11 @@ const formatShort = (value: Date) => {
 export function GanttTimeline() {
   const { tasks, errors } = useAppSelector(selectTaskSchedules);
 
+  const palette = useMemo(
+    () => ['#1976d2', '#9c27b0', '#ef6c00', '#2e7d32', '#d81b60', '#6d4c41', '#00838f', '#5e35b1', '#455a64', '#c2185b'],
+    [],
+  );
+
   const parsed = useMemo<ParsedTask[]>(() => {
     return tasks
       .map((t) => {
@@ -58,7 +63,7 @@ export function GanttTimeline() {
       .filter((t): t is ParsedTask => Boolean(t));
   }, [tasks]);
 
-  const series = useMemo(() => {
+  const { series, colorByAssignee } = useMemo(() => {
     const byAssignee = new Map<string, typeof parsed>();
     parsed.forEach((t) => {
       const key = t.assigneeMemberName || 'Sem responsável';
@@ -66,16 +71,23 @@ export function GanttTimeline() {
       byAssignee.get(key)!.push(t);
     });
 
-    return [...byAssignee.entries()].map(([assignee, list]) => ({
+    const colorByAssignee = new Map<string, string>();
+    [...byAssignee.keys()].forEach((assignee, idx) => {
+      colorByAssignee.set(assignee, palette[idx % palette.length]);
+    });
+
+    const series = [...byAssignee.entries()].map(([assignee, list]) => ({
       name: assignee,
       data: list.map((task) => ({
         x: `${task.id} · ${task.name}`,
         y: [task.start.getTime(), task.end.getTime()],
-        fillColor: task.assigneeMemberName ? '#1976d2' : '#757575',
+        fillColor: colorByAssignee.get(assignee) || '#1976d2',
         task,
       })),
     }));
-  }, [parsed]);
+
+    return { series, colorByAssignee };
+  }, [parsed, palette]);
 
   const bounds = useMemo(() => {
     if (!parsed.length) return null;
@@ -126,10 +138,7 @@ export function GanttTimeline() {
         `;
       },
     },
-    legend: {
-      show: false,
-    },
-    colors: ['#1976d2', '#757575'],
+    legend: { show: false },
     grid: { borderColor: '#e0e0e0' },
     theme: { mode: 'light' },
   }), []);
@@ -157,12 +166,11 @@ export function GanttTimeline() {
             </div>
           )}
           <div className={styles.legend}>
-            <span className={styles.legendItem}>
-              <span className={styles.legendSwatch} /> Tarefa com responsável
-            </span>
-            <span className={styles.legendItem}>
-              <span className={`${styles.legendSwatch} ${styles.legendSwatchUnassigned}`} /> Sem responsável
-            </span>
+            {[...colorByAssignee.entries()].map(([assignee, color]) => (
+              <span key={assignee} className={styles.legendItem}>
+                <span className={styles.legendSwatch} style={{ background: color }} /> {assignee}
+              </span>
+            ))}
           </div>
           <div className={styles.timeline}>
             {series.length === 0 ? (

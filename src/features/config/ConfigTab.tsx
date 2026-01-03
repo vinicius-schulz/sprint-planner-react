@@ -3,20 +3,24 @@ import { Alert, Button, Card, CardContent, TextField, Typography } from '@mui/ma
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { updateConfig } from './configSlice';
 import type { GlobalConfig } from '../../domain/types';
+import { DEFAULT_CONFIG } from '../../domain/constants';
 import styles from './ConfigTab.module.css';
 
 export function ConfigTab() {
   const config = useAppSelector((state) => state.config.value);
   const dispatch = useAppDispatch();
 
-  const [dailyWorkHours, setDailyWorkHours] = useState(config.dailyWorkHours);
-  const [storyPointsPerHour, setStoryPointsPerHour] = useState(config.storyPointsPerHour);
-  const [countedMemberTypes, setCountedMemberTypes] = useState(config.countedMemberTypes.join(', '));
-  const [seniorityFactors, setSeniorityFactors] = useState(JSON.stringify(config.seniorityFactors));
-  const [maturityFactors, setMaturityFactors] = useState(JSON.stringify(config.maturityFactors));
-  const [storyPointScale, setStoryPointScale] = useState(config.storyPointScale.join(', '));
-  const [workloadWarningOver, setWorkloadWarningOver] = useState(config.workloadWarningOver * 100);
-  const [workloadErrorOver, setWorkloadErrorOver] = useState(config.workloadErrorOver * 100);
+  const storyPointScaleSource = config.storyPointScale?.length ? config.storyPointScale : DEFAULT_CONFIG.storyPointScale;
+  const countedTypesSource = config.countedMemberTypes ?? DEFAULT_CONFIG.countedMemberTypes;
+
+  const [dailyWorkHours, setDailyWorkHours] = useState(config.dailyWorkHours ?? DEFAULT_CONFIG.dailyWorkHours);
+  const [storyPointsPerHour, setStoryPointsPerHour] = useState(config.storyPointsPerHour ?? DEFAULT_CONFIG.storyPointsPerHour);
+  const [countedMemberTypes, setCountedMemberTypes] = useState(countedTypesSource.join(', '));
+  const [seniorityFactors, setSeniorityFactors] = useState(JSON.stringify(config.seniorityFactors ?? DEFAULT_CONFIG.seniorityFactors));
+  const [maturityFactors, setMaturityFactors] = useState(JSON.stringify(config.maturityFactors ?? DEFAULT_CONFIG.maturityFactors));
+  const [storyPointScale, setStoryPointScale] = useState(storyPointScaleSource.join(', '));
+  const [workloadWarningOver, setWorkloadWarningOver] = useState((config.workloadWarningOver ?? DEFAULT_CONFIG.workloadWarningOver) * 100);
+  const [workloadErrorOver, setWorkloadErrorOver] = useState((config.workloadErrorOver ?? DEFAULT_CONFIG.workloadErrorOver) * 100);
   const [error, setError] = useState<string | null>(null);
 
   const handleUpdate = () => {

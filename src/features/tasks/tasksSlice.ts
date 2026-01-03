@@ -20,6 +20,18 @@ const tasksSlice = createSlice({
     removeTask(state, action: PayloadAction<string>) {
       state.items = state.items.filter((task) => task.id !== action.payload);
     },
+    updateTask(state, action: PayloadAction<{ id: string; updates: Partial<Pick<TaskItem, 'name' | 'assigneeMemberName' | 'storyPoints' | 'dependencies'>> }>) {
+      const { id, updates } = action.payload;
+      const idx = state.items.findIndex((task) => task.id === id);
+      if (idx === -1) return;
+      const current = state.items[idx];
+      state.items[idx] = {
+        ...current,
+        ...updates,
+        computedStartDate: undefined,
+        computedEndDate: undefined,
+      };
+    },
     replaceTasks(state, action: PayloadAction<TaskItem[]>) {
       state.items = action.payload;
     },
@@ -32,5 +44,5 @@ const tasksSlice = createSlice({
   },
 });
 
-export const { addTask, removeTask, replaceTasks, setComputedTasks, resetTasks } = tasksSlice.actions;
+export const { addTask, removeTask, updateTask, replaceTasks, setComputedTasks, resetTasks } = tasksSlice.actions;
 export default tasksSlice.reducer;

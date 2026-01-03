@@ -1,4 +1,5 @@
 import { useMemo, useState, useEffect } from 'react';
+import type { DragEvent } from 'react';
 import {
   Alert,
   Button,
@@ -16,7 +17,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { addTask, removeTask, setComputedTasks } from './tasksSlice';
+import { addTask, removeTask, replaceTasks, setComputedTasks, updateTask } from './tasksSlice';
 import { validateTask } from '../../domain/services/validators';
 import { computeTaskSchedules, buildWorkingCalendar, selectTeamCapacity } from '../../domain/services/capacityService';
 import type { TaskItem } from '../../domain/types';
@@ -42,6 +43,7 @@ export function TasksTab() {
   const [dependenciesText, setDependenciesText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [calcErrors, setCalcErrors] = useState<string[]>([]);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
   const workingCalendar = useMemo(() => buildWorkingCalendar(sprint, calendar), [sprint, calendar]);
 
@@ -80,6 +82,49 @@ export function TasksTab() {
     if (result.errors.length === 0) {
       dispatch(setComputedTasks(result.tasks));
     }
+  };
+
+  const handleTaskUpdate = (id: string, updates: Partial<Pick<TaskItem, 'name' | 'assigneeMemberName' | 'storyPoints' | 'dependencies'>>) => {
+    dispatch(updateTask({ id, updates }));
+  };
+
+  const handleDependenciesUpdate = (id: string, value: string) => {
+    const dependencies = value
+      .split(',')
+      .map((d) => d.trim())
+      .filter((d) => d.length > 0);
+    handleTaskUpdate(id, { dependencies });
+  };
+
+  const handleDragStart = (taskId: string, event: DragEvent<HTMLTableRowElement>) => {
+    setDraggingId(taskId);
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', taskId);
+  };
+
+  const handleDragOver = (event: DragEvent<HTMLTableRowElement>) => {
+    event.preventDefault();
+    event.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (targetId: string, event: DragEvent<HTMLTableRowElement>) => {
+    event.preventDefault();
+    const sourceId = draggingId ?? event.dataTransfer.getData('text/plain');
+    if (!sourceId || sourceId === targetId) return;
+
+    const sourceIndex = tasks.findIndex((t) => t.id === sourceId);
+    const targetIndex = tasks.findIndex((t) => t.id === targetId);
+    if (sourceIndex === -1 || targetIndex === -1) return;
+
+    const updated = [...tasks];
+    const [moved] = updated.splice(sourceIndex, 1);
+    updated.splice(targetIndex, 0, moved);
+    dispatch(replaceTasks(updated));
+    setDraggingId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggingId(null);
   };
 
   const capacityByMember = useMemo(() => {
@@ -169,14 +214,67 @@ export function TasksTab() {
                 return tasks.map((task) => {
                   const rowClass = getRowClass(task, runningTotals);
                   return (
-                    <TableRow key={task.id} hover className={rowClass}>
+                    <TableRow
+                      key={task.id}
+                      hover
+                      className={rowClass}
+                      draggable
+                      onDragStart={(event) => handleDragStart(task.id, event)}
+                      onDragOver={handleDragOver}
+                      onDrop={(event) => handleDrop(task.id, event)}
+                      onDragEnd={handleDragEnd}
+                    >
                       <TableCell>{task.id}</TableCell>
-                      <TableCell>{task.name}</TableCell>
-                      <TableCell>{task.storyPoints}</TableCell>
+                      <TableCell>
+                        <TextField
+                          variant="standard"
+                          value={task.name}
+                          onChange={(e) => handleTaskUpdate(task.id, { name: e.target.value })}
+                          fullWidth
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          select
+                          variant="standard"
+                          value={task.storyPoints}
+                          onChange={(e) => handleTaskUpdate(task.id, { storyPoints: Number(e.target.value) })}
+                          fullWidth
+                          size="small"
+                        >
+                          {storyPointScale.map((sp) => (
+                            <MenuItem key={sp} value={sp}>{sp}</MenuItem>
+                          ))}
+                        </TextField>
+                      </TableCell>
                       <TableCell>{task.computedStartDate || '-'}</TableCell>
                       <TableCell>{task.computedEndDate || '-'}</TableCell>
-                      <TableCell>{task.dependencies.join(', ') || '-'}</TableCell>
-                      <TableCell>{task.assigneeMemberName || '-'}</TableCell>
+                      <TableCell>
+                        <TextField
+                          variant="standard"
+                          value={task.dependencies.join(', ')}
+                          onChange={(e) => handleDependenciesUpdate(task.id, e.target.value)}
+                          placeholder="Dep. IDs"
+                          fullWidth
+                          size="small"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          select
+                          variant="standard"
+                          value={task.assigneeMemberName || ''}
+                          onChange={(e) => handleTaskUpdate(task.id, { assigneeMemberName: e.target.value || undefined })}
+                          fullWidth
+                          size="small"
+                        >
+                          <MenuItem value="">-- Sem responsável --</MenuItem>
+                          {members.map((m) => (
+                            <MenuItem key={m.id} value={m.name}>{m.name}</MenuItem>
+                          ))}
+                        </TextField>
+                      </TableCell>
                       <TableCell align="right">
                         <IconButton aria-label="remover" onClick={() => dispatch(removeTask(task.id))}>
                           <DeleteIcon />

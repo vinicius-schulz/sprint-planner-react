@@ -20,3 +20,24 @@
 .statusRed {
   background-color: #fee2e2;
 }
+
+.dragHandleCell {
+  width: 40px;
+  text-align: center;
+  cursor: grab;
+}
+
+.dropIndicatorRow {
+  height: 10px;
+}
+
+.dropIndicatorCell {
+  padding: 0;
+  border: none;
+}
+
+.dropIndicatorLine {
+  height: 6px;
+  background: linear-gradient(90deg, #1976d2 0%, #63a4ff 100%);
+  border-radius: 999px;
+}

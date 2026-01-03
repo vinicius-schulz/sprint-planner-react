@@ -1,5 +1,6 @@
 import { useMemo, useState, useEffect } from 'react';
-import type { DragEvent } from 'react';
+import type { DragEvent, ReactNode } from 'react';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import {
   Alert,
   Button,
@@ -44,6 +45,7 @@ export function TasksTab() {
   const [error, setError] = useState<string | null>(null);
   const [calcErrors, setCalcErrors] = useState<string[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | 'end' | null>(null);
 
   const workingCalendar = useMemo(() => buildWorkingCalendar(sprint, calendar), [sprint, calendar]);
 
@@ -84,7 +86,10 @@ export function TasksTab() {
     }
   };
 
-  const handleTaskUpdate = (id: string, updates: Partial<Pick<TaskItem, 'name' | 'assigneeMemberName' | 'storyPoints' | 'dependencies'>>) => {
+  const handleTaskUpdate = (
+    id: string,
+    updates: Partial<Pick<TaskItem, 'name' | 'assigneeMemberName' | 'storyPoints' | 'dependencies'>>,
+  ) => {
     dispatch(updateTask({ id, updates }));
   };
 
@@ -96,15 +101,16 @@ export function TasksTab() {
     handleTaskUpdate(id, { dependencies });
   };
 
-  const handleDragStart = (taskId: string, event: DragEvent<HTMLTableRowElement>) => {
+  const handleDragStart = (taskId: string, event: DragEvent<HTMLButtonElement>) => {
     setDraggingId(taskId);
     event.dataTransfer.effectAllowed = 'move';
     event.dataTransfer.setData('text/plain', taskId);
   };
 
-  const handleDragOver = (event: DragEvent<HTMLTableRowElement>) => {
+  const handleDragOver = (targetId: string, event: DragEvent<HTMLTableRowElement>) => {
     event.preventDefault();
     event.dataTransfer.dropEffect = 'move';
+    setDragOverId(targetId);
   };
 
   const handleDrop = (targetId: string, event: DragEvent<HTMLTableRowElement>) => {
@@ -113,7 +119,7 @@ export function TasksTab() {
     if (!sourceId || sourceId === targetId) return;
 
     const sourceIndex = tasks.findIndex((t) => t.id === sourceId);
-    const targetIndex = tasks.findIndex((t) => t.id === targetId);
+    const targetIndex = targetId === 'end' ? tasks.length : tasks.findIndex((t) => t.id === targetId);
     if (sourceIndex === -1 || targetIndex === -1) return;
 
     const updated = [...tasks];
@@ -121,10 +127,12 @@ export function TasksTab() {
     updated.splice(targetIndex, 0, moved);
     dispatch(replaceTasks(updated));
     setDraggingId(null);
+    setDragOverId(null);
   };
 
   const handleDragEnd = () => {
     setDraggingId(null);
+    setDragOverId(null);
   };
 
   const capacityByMember = useMemo(() => {
@@ -193,6 +201,7 @@ export function TasksTab() {
           <Table size="small">
             <TableHead>
               <TableRow>
+                <TableCell width={40}></TableCell>
                 <TableCell>ID</TableCell>
                 <TableCell>Nome</TableCell>
                 <TableCell>SP</TableCell>
@@ -206,24 +215,51 @@ export function TasksTab() {
             <TableBody>
               {tasks.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={8}>Nenhuma tarefa cadastrada.</TableCell>
+                  <TableCell colSpan={9}>Nenhuma tarefa cadastrada.</TableCell>
                 </TableRow>
               )}
               {(() => {
                 const runningTotals = new Map<string, number>();
-                return tasks.map((task) => {
+                const rows: ReactNode[] = [];
+
+                tasks.forEach((task) => {
                   const rowClass = getRowClass(task, runningTotals);
-                  return (
+
+                  if (draggingId && dragOverId === task.id) {
+                    rows.push(
+                      <TableRow
+                        key={`${task.id}-indicator`}
+                        className={styles.dropIndicatorRow}
+                        onDragOver={(event) => handleDragOver(task.id, event)}
+                        onDrop={(event) => handleDrop(task.id, event)}
+                      >
+                        <TableCell colSpan={9} className={styles.dropIndicatorCell}>
+                          <div className={styles.dropIndicatorLine} />
+                        </TableCell>
+                      </TableRow>,
+                    );
+                  }
+
+                  rows.push(
                     <TableRow
                       key={task.id}
                       hover
                       className={rowClass}
-                      draggable
-                      onDragStart={(event) => handleDragStart(task.id, event)}
-                      onDragOver={handleDragOver}
+                      onDragOver={(event) => handleDragOver(task.id, event)}
                       onDrop={(event) => handleDrop(task.id, event)}
                       onDragEnd={handleDragEnd}
                     >
+                      <TableCell className={styles.dragHandleCell}>
+                        <IconButton
+                          aria-label="mover"
+                          size="small"
+                          draggable
+                          onDragStart={(event) => handleDragStart(task.id, event)}
+                          onDragEnd={handleDragEnd}
+                        >
+                          <DragIndicatorIcon fontSize="small" />
+                        </IconButton>
+                      </TableCell>
                       <TableCell>{task.id}</TableCell>
                       <TableCell>
                         <TextField
@@ -280,9 +316,27 @@ export function TasksTab() {
                           <DeleteIcon />
                         </IconButton>
                       </TableCell>
-                    </TableRow>
+                    </TableRow>,
                   );
                 });
+
+                if (draggingId) {
+                  rows.push(
+                    <TableRow
+                      key="drop-end-indicator"
+                      className={dragOverId === 'end' ? styles.dropIndicatorRow : undefined}
+                      onDragOver={(event) => handleDragOver('end', event)}
+                      onDrop={(event) => handleDrop('end', event)}
+                      onDragEnd={handleDragEnd}
+                    >
+                      <TableCell colSpan={9} className={styles.dropIndicatorCell}>
+                        <div className={styles.dropIndicatorLine} />
+                      </TableCell>
+                    </TableRow>,
+                  );
+                }
+
+                return rows;
               })()}
             </TableBody>
           </Table>

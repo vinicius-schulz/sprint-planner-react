@@ -18,7 +18,11 @@ const tasksSlice = createSlice({
       state.items.push(action.payload);
     },
     removeTask(state, action: PayloadAction<string>) {
-      state.items = state.items.filter((task) => task.id !== action.payload);
+      const removedId = action.payload;
+      state.items = state.items.filter((task) => task.id !== removedId);
+      state.items.forEach((task) => {
+        task.dependencies = task.dependencies.filter((depId) => depId !== removedId);
+      });
     },
     updateTask(state, action: PayloadAction<{ id: string; updates: Partial<Pick<TaskItem, 'name' | 'assigneeMemberName' | 'storyPoints' | 'dependencies'>> }>) {
       const { id, updates } = action.payload;

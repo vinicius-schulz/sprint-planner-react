@@ -157,6 +157,12 @@ export const computeTaskSchedules = (
   const sprintEnd = toDate(sprint.endDate);
   if (!sprintStart || !sprintEnd) return { tasks, errors: ['Data de início e fim da Sprint são obrigatórias.'] };
 
+  const idSet = new Set(tasks.map((t) => t.id));
+  const cleanedTasks = tasks.map((t) => ({
+    ...t,
+    dependencies: (t.dependencies ?? []).filter((depId) => depId !== t.id && idSet.has(depId)),
+  }));
+
   const withinSprint = (day: DaySchedule) => {
     const d = toDate(day.date);
     if (!d) return false;
@@ -251,20 +257,12 @@ export const computeTaskSchedules = (
 
   const completed = new Map<string, { dayIndex: number; minuteOffset: number }>();
   const lastEndByAssignee = new Map<string, { dayIndex: number; minuteOffset: number }>();
-  const taskMap = new Map(tasks.map((t) => [t.id, t]));
-
-  tasks.forEach((t) => {
-    (t.dependencies || []).forEach((depId) => {
-      if (!taskMap.has(depId)) {
-        errors.push(`Dependência ${depId} não encontrada para tarefa ${t.id}.`);
-      }
-    });
-  });
+  const taskMap = new Map(cleanedTasks.map((t) => [t.id, t]));
 
   // Topological order to ensure dependencies are scheduled before dependents
   const indegree = new Map<string, number>();
-  tasks.forEach((t) => indegree.set(t.id, 0));
-  tasks.forEach((t) => {
+  cleanedTasks.forEach((t) => indegree.set(t.id, 0));
+  cleanedTasks.forEach((t) => {
     (t.dependencies || []).forEach((depId) => {
       if (!taskMap.has(depId)) return;
       indegree.set(t.id, (indegree.get(t.id) ?? 0) + 1);
@@ -272,7 +270,7 @@ export const computeTaskSchedules = (
   });
 
   const queue: TaskItem[] = [];
-  tasks.forEach((t) => {
+  cleanedTasks.forEach((t) => {
     if ((indegree.get(t.id) ?? 0) === 0) queue.push(t);
   });
 
@@ -280,7 +278,7 @@ export const computeTaskSchedules = (
   while (queue.length) {
     const current = queue.shift()!;
     ordered.push(current);
-    tasks.forEach((t) => {
+    cleanedTasks.forEach((t) => {
       if (!t.dependencies?.includes(current.id)) return;
       const val = (indegree.get(t.id) ?? 0) - 1;
       indegree.set(t.id, val);
@@ -288,8 +286,8 @@ export const computeTaskSchedules = (
     });
   }
 
-  if (ordered.length !== tasks.length) {
-    const cyclic = tasks.filter((t) => !ordered.includes(t)).map((t) => t.id).join(', ');
+  if (ordered.length !== cleanedTasks.length) {
+    const cyclic = cleanedTasks.filter((t) => !ordered.includes(t)).map((t) => t.id).join(', ');
     errors.push(`Dependências cíclicas ou inválidas entre: ${cyclic || 'tarefas'}.`);
   }
   const resultTasks: TaskItem[] = [];

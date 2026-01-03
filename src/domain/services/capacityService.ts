@@ -10,6 +10,7 @@ import type {
   RootPersistedState,
   SprintState,
   TaskItem,
+  TaskWorkSegment,
   WorkingPeriod,
 } from '../types';
 
@@ -246,9 +247,10 @@ export const computeTaskSchedules = (
   ordered.forEach((task) => {
     const deps = task.dependencies || [];
     const durationMin = durationMinutesForTask(task);
+    const timeline: TaskWorkSegment[] = [];
     if (durationMin === 0) {
       const formatted = formatDateTime(sprint.startDate, '00:00');
-      resultTasks.push({ ...task, computedStartDate: formatted, computedEndDate: formatted });
+      resultTasks.push({ ...task, computedStartDate: formatted, computedEndDate: formatted, computedTimeline: timeline });
       return;
     }
 
@@ -303,6 +305,9 @@ export const computeTaskSchedules = (
         startStamp = { dayIndex: currentDay, minuteOffset: startOffset };
       }
       endStamp = { dayIndex: currentDay, minuteOffset: endOffset };
+      const startClockChunk = offsetToClock(day.periods, startOffset);
+      const endClockChunk = offsetToClock(day.periods, endOffset);
+      timeline.push({ date: day.date, startTime: startClockChunk, endTime: endClockChunk, minutes: take });
       setUsage(assigneeKey, currentDay, startOffset, take);
       remaining -= take;
       if (remaining > 0) currentDay += 1;
@@ -327,6 +332,7 @@ export const computeTaskSchedules = (
       ...task,
       computedStartDate: formatDateTime(startDay.date, startClock),
       computedEndDate: formatDateTime(endDay.date, endClock),
+      computedTimeline: timeline,
     });
   });
 

@@ -6,6 +6,10 @@ import {
   Button,
   Card,
   CardContent,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   IconButton,
   MenuItem,
   Table,
@@ -17,6 +21,7 @@ import {
   Typography,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { addTask, removeTask, replaceTasks, setComputedTasks, updateTask } from './tasksSlice';
 import { validateTask } from '../../domain/services/validators';
@@ -66,6 +71,7 @@ export function TasksTab() {
   const [calcErrors, setCalcErrors] = useState<string[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | 'end' | null>(null);
+  const [infoTask, setInfoTask] = useState<TaskItem | null>(null);
 
   useEffect(() => {
     setStoryPoints(storyPointScale[0] ?? 1);
@@ -153,6 +159,9 @@ export function TasksTab() {
     setDragOverId(null);
   };
 
+  const handleOpenInfo = (task: TaskItem) => setInfoTask(task);
+  const handleCloseInfo = () => setInfoTask(null);
+
   const capacityByMember = useMemo(() => {
     const map = new Map<string, number>();
     teamCapacity.members.forEach((mc) => map.set(mc.member.name, mc.storyPoints));
@@ -227,13 +236,14 @@ export function TasksTab() {
                 <TableCell>Fim</TableCell>
                 <TableCell>Dependências</TableCell>
                 <TableCell>Responsável</TableCell>
-                <TableCell></TableCell>
+                <TableCell width={40}></TableCell>
+                <TableCell width={40}></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {tasks.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={9}>Nenhuma tarefa cadastrada.</TableCell>
+                  <TableCell colSpan={10}>Nenhuma tarefa cadastrada.</TableCell>
                 </TableRow>
               )}
               {(() => {
@@ -251,7 +261,7 @@ export function TasksTab() {
                         onDragOver={(event) => handleDragOver(task.id, event)}
                         onDrop={(event) => handleDrop(task.id, event)}
                       >
-                        <TableCell colSpan={9} className={styles.dropIndicatorCell}>
+                        <TableCell colSpan={10} className={styles.dropIndicatorCell}>
                           <div className={styles.dropIndicatorLine} />
                         </TableCell>
                       </TableRow>,
@@ -334,6 +344,11 @@ export function TasksTab() {
                           <DeleteIcon />
                         </IconButton>
                       </TableCell>
+                      <TableCell>
+                        <IconButton aria-label="detalhes" onClick={() => handleOpenInfo(task)}>
+                          <InfoOutlinedIcon />
+                        </IconButton>
+                      </TableCell>
                     </TableRow>,
                   );
                 });
@@ -347,7 +362,7 @@ export function TasksTab() {
                       onDrop={(event) => handleDrop('end', event)}
                       onDragEnd={handleDragEnd}
                     >
-                      <TableCell colSpan={9} className={styles.dropIndicatorCell}>
+                      <TableCell colSpan={10} className={styles.dropIndicatorCell}>
                         <div className={styles.dropIndicatorLine} />
                       </TableCell>
                     </TableRow>,
@@ -360,6 +375,34 @@ export function TasksTab() {
           </Table>
         </div>
       </CardContent>
+      <Dialog open={!!infoTask} onClose={handleCloseInfo} fullWidth maxWidth="sm">
+        <DialogTitle>Detalhes da tarefa</DialogTitle>
+        <DialogContent dividers>
+          {infoTask && (
+            <div className={styles.infoDialogContent}>
+              <Typography variant="subtitle1" gutterBottom>{infoTask.name}</Typography>
+              <Typography variant="body2">ID: {infoTask.id}</Typography>
+              <Typography variant="body2">Responsável: {infoTask.assigneeMemberName || '—'}</Typography>
+              <Typography variant="body2">Início: {formatDateTimeBr(infoTask.computedStartDate)}</Typography>
+              <Typography variant="body2" gutterBottom>Fim: {formatDateTimeBr(infoTask.computedEndDate)}</Typography>
+              <Typography variant="subtitle2" gutterBottom>Plano por dia</Typography>
+              {!infoTask.computedTimeline?.length && (
+                <Typography variant="body2" color="text.secondary">
+                  Calcule as datas para ver o cronograma detalhado.
+                </Typography>
+              )}
+              {infoTask.computedTimeline?.map((seg) => (
+                <Typography key={`${seg.date}-${seg.startTime}-${seg.endTime}`} variant="body2">
+                  {formatDateTimeBr(`${seg.date} ${seg.startTime}`)} - {seg.endTime} ({seg.minutes} min)
+                </Typography>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseInfo}>Fechar</Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }

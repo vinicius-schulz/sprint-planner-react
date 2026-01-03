@@ -48,6 +48,14 @@ export interface TaskItem {
   dependencies: string[];
   computedStartDate?: DateString;
   computedEndDate?: DateString;
+  computedTimeline?: TaskWorkSegment[];
+}
+
+export interface TaskWorkSegment {
+  date: DateString;
+  startTime: string; // HH:mm
+  endTime: string;   // HH:mm
+  minutes: number;
 }
 
 export interface GlobalConfig {

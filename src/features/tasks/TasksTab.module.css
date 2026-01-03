@@ -41,3 +41,9 @@
   background: linear-gradient(90deg, #1976d2 0%, #63a4ff 100%);
   border-radius: 999px;
 }
+
+.infoDialogContent {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}

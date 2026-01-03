@@ -29,16 +29,21 @@ const generateTaskId = () => Math.random().toString(36).slice(2, 6).toUpperCase(
 
 const formatDateTimeBr = (value?: string) => {
   if (!value) return '-';
-  const [datePart, rawTime = ''] = value.split(' ');
-  if (!datePart) return '-';
-  const timePart = rawTime || '00:00';
-  if (datePart.includes('/')) return `${datePart} ${timePart}`;
-  const [year, month, day] = datePart.split('-');
-  if (year && month && day) {
-    const dateFormatted = `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
-    return `${dateFormatted} ${timePart}`;
+  const cleaned = value.replace('T', ' ').replace('Z', '').trim();
+
+  const isoMatch = cleaned.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s(\d{2}:\d{2}))?/);
+  if (isoMatch) {
+    const [, y, m, d, t] = isoMatch;
+    return `${d}/${m}/${y} ${t ?? '00:00'}`;
   }
-  return value;
+
+  const brMatch = cleaned.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s(\d{2}:\d{2}))?/);
+  if (brMatch) {
+    const [, d, m, y, t] = brMatch;
+    return `${d}/${m}/${y} ${t ?? '00:00'}`;
+  }
+
+  return `${cleaned} 00:00`;
 };
 
 export function TasksTab() {

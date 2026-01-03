@@ -1,6 +1,6 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { dateRange, isWeekend, toDate, toISODate } from './dateUtils';
-import { computeDayHours } from './workingCalendar';
+import { computeDayHours, generateDefaultPeriods } from './workingCalendar';
 import type {
   CalendarState,
   DaySchedule,
@@ -161,9 +161,13 @@ export const computeTaskSchedules = (
     return d >= sprintStart && d <= sprintEnd;
   };
 
+  const resolvePeriods = (day: DaySchedule): WorkingPeriod[] =>
+    day.periods?.length ? day.periods : generateDefaultPeriods(config);
+
   const workingDaySchedules = (calendar.daySchedules ?? [])
-    .filter((d) => !d.isNonWorking && computeDayHours(d.periods) > 0)
+    .filter((d) => !d.isNonWorking && computeDayHours(resolvePeriods(d)) > 0)
     .filter(withinSprint)
+    .map((d) => ({ ...d, periods: resolvePeriods(d) }))
     .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
 
   if (!workingDaySchedules.length) return { tasks, errors: ['Não há dias úteis na Sprint para agendar tarefas.'] };

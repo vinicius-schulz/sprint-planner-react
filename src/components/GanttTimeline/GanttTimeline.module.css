@@ -1,0 +1,52 @@
+ .wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.timeline {
+  overflow-x: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: #fafafa;
+  padding: 12px;
+  min-height: 320px;
+}
+
+.meta {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  color: #555;
+  font-size: 13px;
+}
+
+.legend {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  font-size: 13px;
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.legendSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 4px;
+  background: linear-gradient(90deg, #1976d2, #2196f3);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.legendSwatchUnassigned {
+  background: linear-gradient(90deg, #6d6d6d, #9e9e9e);
+}
+
+.empty {
+  padding: 4px 0;
+  color: #777;
+}

@@ -18,12 +18,17 @@ interface Props {
   task: TaskItem | null;
   onClose: () => void;
   formatDateTime: (value?: string) => string;
+  storyPointsPerHour: number;
 }
 
 const formatPeriods = (periods: { start: string; end: string }[]) =>
   periods.map((p) => `${p.start}-${p.end}`).join(', ');
 
-export function TaskInfoDialog({ open, task, onClose, formatDateTime }: Props) {
+export function TaskInfoDialog({ open, task, onClose, formatDateTime, storyPointsPerHour }: Props) {
+  const totalMinutes = task?.computedTimeline?.reduce((sum, seg) => sum + seg.minutes, 0) ?? 0;
+  const totalHours = totalMinutes / 60;
+  const sp = task?.storyPoints ?? 0;
+  const storyHours = storyPointsPerHour > 0 ? sp / storyPointsPerHour : 0;
   return (
     <Dialog open={open} onClose={onClose} fullWidth maxWidth="sm">
       <DialogTitle>Detalhes da tarefa</DialogTitle>
@@ -36,6 +41,10 @@ export function TaskInfoDialog({ open, task, onClose, formatDateTime }: Props) {
             <Typography variant="body2">Responsável: {task.assigneeMemberName || '—'}</Typography>
             <Typography variant="body2">Início: {formatDateTime(task.computedStartDate)}</Typography>
             <Typography variant="body2" gutterBottom>Fim: {formatDateTime(task.computedEndDate)}</Typography>
+            <Typography variant="body2">Story Points: {sp}</Typography>
+            <Typography variant="body2" gutterBottom>
+              Total planejado: {totalHours.toFixed(1)} h úteis ({totalMinutes} min) — equivalente a {storyHours.toFixed(1)} h pela taxa de SP ({storyPointsPerHour} SP/h)
+            </Typography>
 
             <Typography variant="subtitle2" gutterBottom>Plano por dia</Typography>
             {!task.computedTimeline?.length && (

@@ -99,14 +99,6 @@ export function TasksTab() {
     setDependenciesText('');
   };
 
-  const handleCalculate = () => {
-    const result = computeTaskSchedules(tasks, sprint, calendar, config, members, events);
-    setCalcErrors(result.errors);
-    if (result.errors.length === 0) {
-      dispatch(setComputedTasks(result.tasks));
-    }
-  };
-
   const handleTaskUpdate = (
     id: string,
     updates: Partial<Pick<TaskItem, 'name' | 'assigneeMemberName' | 'storyPoints' | 'dependencies'>>,
@@ -165,6 +157,29 @@ export function TasksTab() {
     return map;
   }, [teamCapacity]);
 
+  const schedulesEqual = (current: TaskItem[], next: TaskItem[]) => {
+    if (current.length !== next.length) return false;
+    const byId = new Map(current.map((t) => [t.id, t]));
+    return next.every((t) => {
+      const prev = byId.get(t.id);
+      if (!prev) return false;
+      const sameStart = prev.computedStartDate === t.computedStartDate;
+      const sameEnd = prev.computedEndDate === t.computedEndDate;
+      const prevTimeline = JSON.stringify(prev.computedTimeline ?? []);
+      const nextTimeline = JSON.stringify(t.computedTimeline ?? []);
+      return sameStart && sameEnd && prevTimeline === nextTimeline;
+    });
+  };
+
+  useEffect(() => {
+    const result = computeTaskSchedules(tasks, sprint, calendar, config, members, events);
+    setCalcErrors(result.errors);
+    if (result.errors.length > 0) return;
+    if (!schedulesEqual(tasks, result.tasks)) {
+      dispatch(setComputedTasks(result.tasks));
+    }
+  }, [tasks, sprint, calendar, config, members, events, dispatch]);
+
   const getRowClass = (task: TaskItem, runningTotals: Map<string, number>) => {
     const memberName = task.assigneeMemberName;
     if (!memberName) return styles.statusGreen;
@@ -215,7 +230,6 @@ export function TasksTab() {
             onChange={(e) => setDependenciesText(e.target.value)}
           />
           <Button variant="contained" onClick={handleAdd}>Adicionar Tarefa</Button>
-          <Button variant="outlined" onClick={handleCalculate}>Calcular Datas</Button>
         </div>
         {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
         {calcErrors.map((err) => (
@@ -372,7 +386,13 @@ export function TasksTab() {
           </Table>
         </div>
       </CardContent>
-      <TaskInfoDialog open={!!infoTask} task={infoTask} onClose={handleCloseInfo} formatDateTime={formatDateTimeBr} />
+      <TaskInfoDialog
+        open={!!infoTask}
+        task={infoTask}
+        onClose={handleCloseInfo}
+        formatDateTime={formatDateTimeBr}
+        storyPointsPerHour={config.storyPointsPerHour}
+      />
     </Card>
   );
 }

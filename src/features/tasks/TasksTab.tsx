@@ -20,17 +20,32 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { addTask, removeTask, replaceTasks, setComputedTasks, updateTask } from './tasksSlice';
 import { validateTask } from '../../domain/services/validators';
-import { computeTaskSchedules, buildWorkingCalendar, selectTeamCapacity } from '../../domain/services/capacityService';
+import { computeTaskSchedules, selectTeamCapacity } from '../../domain/services/capacityService';
 import type { TaskItem } from '../../domain/types';
 import { DEFAULT_CONFIG } from '../../domain/constants';
 import styles from './TasksTab.module.css';
 
 const generateTaskId = () => Math.random().toString(36).slice(2, 6).toUpperCase();
 
+const formatDateTimeBr = (value?: string) => {
+  if (!value) return '-';
+  const [datePart, rawTime = ''] = value.split(' ');
+  if (!datePart) return '-';
+  const timePart = rawTime || '00:00';
+  if (datePart.includes('/')) return `${datePart} ${timePart}`;
+  const [year, month, day] = datePart.split('-');
+  if (year && month && day) {
+    const dateFormatted = `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+    return `${dateFormatted} ${timePart}`;
+  }
+  return value;
+};
+
 export function TasksTab() {
   const dispatch = useAppDispatch();
   const tasks = useAppSelector((state) => state.tasks.items);
   const members = useAppSelector((state) => state.members.items);
+  const events = useAppSelector((state) => state.events.items);
   const sprint = useAppSelector((state) => state.sprint);
   const calendar = useAppSelector((state) => state.calendar);
   const config = useAppSelector((state) => state.config.value);
@@ -46,8 +61,6 @@ export function TasksTab() {
   const [calcErrors, setCalcErrors] = useState<string[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | 'end' | null>(null);
-
-  const workingCalendar = useMemo(() => buildWorkingCalendar(sprint, calendar), [sprint, calendar]);
 
   useEffect(() => {
     setStoryPoints(storyPointScale[0] ?? 1);
@@ -79,7 +92,7 @@ export function TasksTab() {
   };
 
   const handleCalculate = () => {
-    const result = computeTaskSchedules(tasks, sprint, workingCalendar.workingDays, config);
+    const result = computeTaskSchedules(tasks, sprint, calendar, config, members, events);
     setCalcErrors(result.errors);
     if (result.errors.length === 0) {
       dispatch(setComputedTasks(result.tasks));
@@ -284,8 +297,8 @@ export function TasksTab() {
                           ))}
                         </TextField>
                       </TableCell>
-                      <TableCell>{task.computedStartDate || '-'}</TableCell>
-                      <TableCell>{task.computedEndDate || '-'}</TableCell>
+                      <TableCell>{formatDateTimeBr(task.computedStartDate)}</TableCell>
+                      <TableCell>{formatDateTimeBr(task.computedEndDate)}</TableCell>
                       <TableCell>
                         <TextField
                           variant="standard"

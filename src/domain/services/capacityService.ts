@@ -1,14 +1,16 @@
 import { createSelector } from '@reduxjs/toolkit';
-import { addWorkingDays, dateRange, firstWorkingDayOnOrAfter, isWeekend, nextWorkingDay, toDate, toISODate } from './dateUtils';
+import { dateRange, isWeekend, toDate, toISODate } from './dateUtils';
 import { computeDayHours } from './workingCalendar';
 import type {
   CalendarState,
+  DaySchedule,
   EventItem,
   GlobalConfig,
   Member,
   RootPersistedState,
   SprintState,
   TaskItem,
+  WorkingPeriod,
 } from '../types';
 
 export interface WorkingCalendarResult {
@@ -132,37 +134,118 @@ export interface TaskScheduleResult {
   errors: string[];
 }
 
+const formatDate = (iso: string): string => {
+  const [year, month, day] = iso.split('-');
+  if (!year || !month || !day) return iso;
+  return `${day.padStart(2, '0')}/${month.padStart(2, '0')}/${year}`;
+};
+
+const formatDateTime = (isoDate: string, clock: string): string => `${formatDate(isoDate)} ${clock}`;
+
 export const computeTaskSchedules = (
   tasks: TaskItem[],
   sprint: SprintState,
-  workingDays: string[],
+  calendar: CalendarState,
   config: GlobalConfig,
+  members: Member[],
+  events: EventItem[],
 ): TaskScheduleResult => {
   const errors: string[] = [];
-  const start = toDate(sprint.startDate);
-  if (!start) return { tasks, errors: ['Data de início da Sprint é obrigatória para calcular tarefas.'] };
-  if (!workingDays.length) return { tasks, errors: ['Não há dias úteis na Sprint para agendar tarefas.'] };
+  const sprintStart = toDate(sprint.startDate);
+  const sprintEnd = toDate(sprint.endDate);
+  if (!sprintStart || !sprintEnd) return { tasks, errors: ['Data de início e fim da Sprint são obrigatórias.'] };
 
-  const workingSet = new Set(workingDays);
+  const withinSprint = (day: DaySchedule) => {
+    const d = toDate(day.date);
+    if (!d) return false;
+    return d >= sprintStart && d <= sprintEnd;
+  };
+
+  const workingDaySchedules = (calendar.daySchedules ?? [])
+    .filter((d) => !d.isNonWorking && computeDayHours(d.periods) > 0)
+    .filter(withinSprint)
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+  if (!workingDaySchedules.length) return { tasks, errors: ['Não há dias úteis na Sprint para agendar tarefas.'] };
+
+  const recurringDailyMinutes = events
+    .filter((e) => e.recurringDaily)
+    .reduce((sum, ev) => sum + ev.minutes, 0);
+
+  const eventsByDate = events
+    .filter((e) => !e.recurringDaily)
+    .reduce((map, ev) => {
+      map.set(ev.date, (map.get(ev.date) ?? 0) + ev.minutes);
+      return map;
+    }, new Map<string, number>());
+
+  const memberByName = new Map<string, Member>(members.map((m) => [m.name, m]));
+
+  const timeToMinutes = (time: string): number => {
+    const match = time?.match(/^(\d{2}):(\d{2})$/);
+    if (!match) return 0;
+    return Number(match[1]) * 60 + Number(match[2]);
+  };
+
+  const periodsMinutes = (periods: WorkingPeriod[]) =>
+    periods.reduce((acc, period) => acc + Math.max(0, timeToMinutes(period.end) - timeToMinutes(period.start)), 0);
+
+  const offsetToClock = (periods: WorkingPeriod[], offsetMinutes: number): string => {
+    let remaining = offsetMinutes;
+    for (const period of periods) {
+      const start = timeToMinutes(period.start);
+      const end = timeToMinutes(period.end);
+      const len = Math.max(0, end - start);
+      if (remaining <= len) {
+        const mins = start + remaining;
+        const hh = String(Math.floor(mins / 60)).padStart(2, '0');
+        const mm = String(mins % 60).padStart(2, '0');
+        return `${hh}:${mm}`;
+      }
+      remaining -= len;
+    }
+    const lastEnd = timeToMinutes(periods[periods.length - 1]?.end ?? '00:00');
+    const hh = String(Math.floor(lastEnd / 60)).padStart(2, '0');
+    const mm = String(lastEnd % 60).padStart(2, '0');
+    return `${hh}:${mm}`;
+  };
+
+  const dayCapacityForAssignee = (day: DaySchedule, assignee?: Member): number => {
+    const baseMinutes = Math.max(0, periodsMinutes(day.periods) - (eventsByDate.get(day.date) ?? 0) - recurringDailyMinutes);
+    if (!assignee) return baseMinutes;
+    const availability = assignee.availabilityPercent / 100;
+    const seniorityFactor = config.seniorityFactors[assignee.seniority] ?? 1;
+    const maturityFactor = config.maturityFactors[assignee.maturity] ?? 1;
+    return Math.max(0, Math.floor(baseMinutes * availability * seniorityFactor * maturityFactor));
+  };
+
+  const usageByAssigneeDay = new Map<string, Map<number, number>>();
+  const getUsage = (assigneeKey: string, dayIndex: number) => usageByAssigneeDay.get(assigneeKey)?.get(dayIndex) ?? 0;
+  const setUsage = (assigneeKey: string, dayIndex: number, startOffset: number, minutes: number) => {
+    if (!usageByAssigneeDay.has(assigneeKey)) usageByAssigneeDay.set(assigneeKey, new Map());
+    const map = usageByAssigneeDay.get(assigneeKey)!;
+    const current = map.get(dayIndex) ?? 0;
+    const newUsage = Math.max(current, startOffset) + minutes;
+    map.set(dayIndex, newUsage);
+  };
+
+  const durationMinutesForTask = (task: TaskItem) => {
+    if (config.storyPointsPerHour <= 0) return 0;
+    return Math.max(0, Math.ceil((task.storyPoints / config.storyPointsPerHour) * 60));
+  };
+
+  const completed = new Map<string, { dayIndex: number; minuteOffset: number }>();
+  const lastEndByAssignee = new Map<string, { dayIndex: number; minuteOffset: number }>();
   const ordered = [...tasks];
-  const completed = new Map<string, { start: string; end: string }>();
-  const lastEndByAssignee = new Map<string, string>();
-
-  const firstWorking = firstWorkingDayOnOrAfter(start, workingSet);
-  if (!firstWorking) return { tasks, errors: ['Não foi possível encontrar dia útil para início da Sprint.'] };
-
   const resultTasks: TaskItem[] = [];
 
   ordered.forEach((task) => {
     const deps = task.dependencies || [];
-    let startDate = new Date(firstWorking);
-
-    const assigneeEnd = task.assigneeMemberName ? lastEndByAssignee.get(task.assigneeMemberName) : null;
-    if (assigneeEnd) {
-      const afterAssignee = nextWorkingDay(toDate(assigneeEnd)!, workingSet);
-      if (afterAssignee && afterAssignee > startDate) {
-        startDate = afterAssignee;
-      }
+    const durationMin = durationMinutesForTask(task);
+    if (durationMin === 0) {
+      const formatted = formatDateTime(sprint.startDate, '00:00');
+      resultTasks.push({ ...task, computedStartDate: formatted, computedEndDate: formatted });
+      return;
     }
 
     if (deps.includes(task.id)) {
@@ -170,44 +253,77 @@ export const computeTaskSchedules = (
       return;
     }
 
+    let earliestPointer = { dayIndex: 0, minuteOffset: 0 };
+
     deps.forEach((depId) => {
       const dep = completed.get(depId);
       if (!dep) {
         errors.push(`Dependência ${depId} não encontrada para tarefa ${task.id}.`);
         return;
       }
-      const depEnd = toDate(dep.end);
-      if (depEnd) {
-        const next = nextWorkingDay(depEnd, workingSet);
-        if (next && next > startDate) {
-          startDate = next;
-        }
+      if (dep.dayIndex > earliestPointer.dayIndex || (dep.dayIndex === earliestPointer.dayIndex && dep.minuteOffset > earliestPointer.minuteOffset)) {
+        earliestPointer = { ...dep };
       }
     });
 
-    if (!workingSet.has(toISODate(startDate))) {
-      const adjusted = firstWorkingDayOnOrAfter(startDate, workingSet);
-      if (adjusted) {
-        startDate = adjusted;
+    const assignee = task.assigneeMemberName ? memberByName.get(task.assigneeMemberName) : undefined;
+    const assigneeLast = task.assigneeMemberName ? lastEndByAssignee.get(task.assigneeMemberName) : undefined;
+    if (assigneeLast) {
+      if (assigneeLast.dayIndex > earliestPointer.dayIndex || (assigneeLast.dayIndex === earliestPointer.dayIndex && assigneeLast.minuteOffset > earliestPointer.minuteOffset)) {
+        earliestPointer = { ...assigneeLast };
       }
     }
 
-    const durationHours = config.storyPointsPerHour > 0 ? task.storyPoints / config.storyPointsPerHour : 0;
-    const durationDays = Math.max(1, Math.ceil(durationHours / config.dailyWorkHours));
-    const endDate = addWorkingDays(startDate, durationDays, workingDays);
+    let remaining = durationMin;
+    let currentDay = earliestPointer.dayIndex;
+    let startStamp: { dayIndex: number; minuteOffset: number } | null = null;
+    let endStamp: { dayIndex: number; minuteOffset: number } | null = null;
+    const assigneeKey = task.assigneeMemberName || 'UNASSIGNED';
 
-    if (!endDate) {
+    while (remaining > 0 && currentDay < workingDaySchedules.length) {
+      const day = workingDaySchedules[currentDay];
+      const capacity = dayCapacityForAssignee(day, assignee);
+      let used = getUsage(assigneeKey, currentDay);
+      if (currentDay === earliestPointer.dayIndex && earliestPointer.minuteOffset > used) {
+        used = earliestPointer.minuteOffset;
+      }
+      const available = Math.max(0, capacity - used);
+      if (available <= 0) {
+        currentDay += 1;
+        continue;
+      }
+      const take = Math.min(available, remaining);
+      const startOffset = used;
+      const endOffset = used + take;
+      if (!startStamp) {
+        startStamp = { dayIndex: currentDay, minuteOffset: startOffset };
+      }
+      endStamp = { dayIndex: currentDay, minuteOffset: endOffset };
+      setUsage(assigneeKey, currentDay, startOffset, take);
+      remaining -= take;
+      if (remaining > 0) currentDay += 1;
+    }
+
+    if (remaining > 0 || !startStamp || !endStamp) {
       errors.push(`Não foi possível calcular data final para tarefa ${task.id}.`);
       return;
     }
 
-    const startIso = toISODate(startDate);
-    const endIso = toISODate(endDate);
-    completed.set(task.id, { start: startIso, end: endIso });
+    const startDay = workingDaySchedules[startStamp.dayIndex];
+    const endDay = workingDaySchedules[endStamp.dayIndex];
+    const startClock = offsetToClock(startDay.periods, startStamp.minuteOffset);
+    const endClock = offsetToClock(endDay.periods, endStamp.minuteOffset);
+
+    completed.set(task.id, endStamp);
     if (task.assigneeMemberName) {
-      lastEndByAssignee.set(task.assigneeMemberName, endIso);
+      lastEndByAssignee.set(task.assigneeMemberName, endStamp);
     }
-    resultTasks.push({ ...task, computedStartDate: startIso, computedEndDate: endIso });
+
+    resultTasks.push({
+      ...task,
+      computedStartDate: formatDateTime(startDay.date, startClock),
+      computedEndDate: formatDateTime(endDay.date, endClock),
+    });
   });
 
   return { tasks: resultTasks, errors };
@@ -243,9 +359,11 @@ export const selectTaskSchedules = createSelector(
   [
     (state: RootPersistedState) => state.tasks.items,
     (state: RootPersistedState) => state.sprint,
-    selectWorkingCalendar,
+    (state: RootPersistedState) => state.calendar,
     (state: RootPersistedState) => state.config.value,
+    (state: RootPersistedState) => state.members.items,
+    (state: RootPersistedState) => state.events.items,
   ],
-  (tasks, sprint, calendarResult, config) =>
-    computeTaskSchedules(tasks, sprint, calendarResult.workingDays, config),
+  (tasks, sprint, calendarState, config, members, events) =>
+    computeTaskSchedules(tasks, sprint, calendarState, config, members, events),
 );

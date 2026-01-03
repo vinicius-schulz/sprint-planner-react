@@ -1,5 +1,6 @@
 import { createSelector } from '@reduxjs/toolkit';
 import { addWorkingDays, dateRange, firstWorkingDayOnOrAfter, isWeekend, nextWorkingDay, toDate, toISODate } from './dateUtils';
+import { computeDayHours } from './workingCalendar';
 import type {
   CalendarState,
   EventItem,
@@ -19,6 +20,16 @@ export const buildWorkingCalendar = (
   sprint: SprintState,
   calendar: CalendarState,
 ): WorkingCalendarResult => {
+  if (calendar.daySchedules?.length) {
+    const workingDays = calendar.daySchedules
+      .filter((d) => !d.isNonWorking && computeDayHours(d.periods) > 0)
+      .map((d) => d.date);
+    const nonWorkingDays = calendar.daySchedules
+      .filter((d) => d.isNonWorking || computeDayHours(d.periods) === 0)
+      .map((d) => d.date);
+    return { workingDays, nonWorkingDays };
+  }
+
   const { startDate, endDate } = sprint;
   const start = toDate(startDate);
   const end = toDate(endDate);
@@ -67,9 +78,14 @@ export const computeWorkingHours = (
   config: GlobalConfig,
   workingDays: string[],
   events: EventItem[],
+  calendar: CalendarState,
 ): number => {
   if (!workingDays.length) return 0;
-  const baseHours = workingDays.length * config.dailyWorkHours;
+  const baseHours = calendar.daySchedules?.length
+    ? calendar.daySchedules
+        .filter((d) => workingDays.includes(d.date))
+        .reduce((sum, d) => sum + computeDayHours(d.periods), 0)
+    : workingDays.length * config.dailyWorkHours;
   const deduction = computeEventDeductionHours(events, workingDays);
   return Math.max(0, baseHours - deduction);
 };
@@ -208,9 +224,10 @@ export const selectWorkingHours = createSelector(
     selectWorkingCalendar,
     (state: RootPersistedState) => state.config.value,
     (state: RootPersistedState) => state.events.items,
+    (state: RootPersistedState) => state.calendar,
   ],
-  (calendarResult, config, events) =>
-    computeWorkingHours(config, calendarResult.workingDays, events),
+  (calendarResult, config, events, calendar) =>
+    computeWorkingHours(config, calendarResult.workingDays, events, calendar),
 );
 
 export const selectTeamCapacity = createSelector(

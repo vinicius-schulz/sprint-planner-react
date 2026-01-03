@@ -1,10 +1,11 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { CalendarState, DateString } from '../../domain/types';
+import type { CalendarState, DateString, DaySchedule } from '../../domain/types';
 
 const initialState: CalendarState = {
   nonWorkingDaysManual: [],
   nonWorkingDaysRemoved: [],
+  daySchedules: [],
 };
 
 const calendarSlice = createSlice({
@@ -30,6 +31,14 @@ const calendarSlice = createSlice({
     replaceCalendar(_, action: PayloadAction<CalendarState>) {
       return action.payload;
     },
+    setDaySchedules(state, action: PayloadAction<DaySchedule[]>) {
+      state.daySchedules = action.payload;
+    },
+    updateDaySchedule(state, action: PayloadAction<DaySchedule>) {
+      const idx = state.daySchedules.findIndex((d) => d.date === action.payload.date);
+      if (idx === -1) return;
+      state.daySchedules[idx] = action.payload;
+    },
     resetCalendar() {
       return initialState;
     },
@@ -42,6 +51,8 @@ export const {
   addRemovedWeekend,
   removeRemovedWeekend,
   replaceCalendar,
+  setDaySchedules,
+  updateDaySchedule,
   resetCalendar,
 } = calendarSlice.actions;
 

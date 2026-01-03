@@ -17,3 +17,19 @@
   flex-wrap: wrap;
   margin-top: 12px;
 }
+
+.dayTable {
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.periodCell {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(100px, 1fr));
+  gap: 6px;
+  align-items: center;
+}
+
+.nonWorkingRow {
+  background-color: #f3f4f6;
+}

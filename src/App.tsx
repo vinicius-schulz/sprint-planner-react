@@ -3,7 +3,6 @@ import { Box, Container, Tab, Tabs, Typography } from '@mui/material';
 import './App.css';
 import { TabPanel } from './components/TabPanel';
 import { SprintTab } from './features/sprint/SprintTab';
-import { NonWorkingDaysTab } from './features/calendar/NonWorkingDaysTab';
 import { EventsTab } from './features/events/EventsTab';
 import { TeamTab } from './features/members/TeamTab';
 import { TasksTab } from './features/tasks/TasksTab';
@@ -30,7 +29,6 @@ function App() {
           scrollButtons="auto"
         >
           <Tab label="Sprint" />
-          <Tab label="Dias Não Úteis" />
           <Tab label="Eventos" />
           <Tab label="Time" />
           <Tab label="Tarefas" />
@@ -42,21 +40,18 @@ function App() {
         <SprintTab />
       </TabPanel>
       <TabPanel value={tab} index={1}>
-        <NonWorkingDaysTab />
-      </TabPanel>
-      <TabPanel value={tab} index={2}>
         <EventsTab />
       </TabPanel>
-      <TabPanel value={tab} index={3}>
+      <TabPanel value={tab} index={2}>
         <TeamTab />
       </TabPanel>
-      <TabPanel value={tab} index={4}>
+      <TabPanel value={tab} index={3}>
         <TasksTab />
       </TabPanel>
-      <TabPanel value={tab} index={5}>
+      <TabPanel value={tab} index={4}>
         <ConfigTab />
       </TabPanel>
-      <TabPanel value={tab} index={6}>
+      <TabPanel value={tab} index={5}>
         <ImportExportTab />
       </TabPanel>
     </Container>

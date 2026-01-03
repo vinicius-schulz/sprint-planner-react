@@ -21,6 +21,11 @@ export function ConfigTab() {
   const [storyPointScale, setStoryPointScale] = useState(storyPointScaleSource.join(', '));
   const [workloadWarningOver, setWorkloadWarningOver] = useState((config.workloadWarningOver ?? DEFAULT_CONFIG.workloadWarningOver) * 100);
   const [workloadErrorOver, setWorkloadErrorOver] = useState((config.workloadErrorOver ?? DEFAULT_CONFIG.workloadErrorOver) * 100);
+  const [defaultWorkingPeriods, setDefaultWorkingPeriods] = useState(
+    (config.defaultWorkingPeriods ?? DEFAULT_CONFIG.defaultWorkingPeriods)
+      .map((p) => `${p.start}-${p.end}`)
+      .join('; '),
+  );
   const [error, setError] = useState<string | null>(null);
 
   const handleUpdate = () => {
@@ -35,6 +40,24 @@ export function ConfigTab() {
         .split(',')
         .map((v) => Number(v.trim()))
         .filter((v) => Number.isFinite(v) && v >= 0);
+      const parsedPeriods = defaultWorkingPeriods
+        .split(';')
+        .map((chunk) => chunk.trim())
+        .filter((chunk) => chunk.length > 0)
+        .map((chunk) => {
+          const [start, end] = chunk.split('-').map((v) => v.trim());
+          return { start, end };
+        })
+        .filter((p) => p.start && p.end);
+      const isValidTime = (val: string) => /^\d{2}:\d{2}$/.test(val);
+      if (parsedPeriods.some((p) => !isValidTime(p.start) || !isValidTime(p.end))) {
+        setError('Períodos padrão devem estar no formato HH:mm-HH:mm;...');
+        return;
+      }
+      if (parsedPeriods.length === 0) {
+        setError('Informe pelo menos um período padrão.');
+        return;
+      }
       if (spScale.length === 0) {
         setError('Escala de Story Points não pode ser vazia.');
         return;
@@ -53,6 +76,7 @@ export function ConfigTab() {
         setError('Limites de sobrecarga devem ser não negativos.');
         return;
       }
+      const defaultWorkingPeriodsParsed = parsedPeriods.map((p) => ({ start: p.start, end: p.end }));
       const newConfig: GlobalConfig = {
         dailyWorkHours: Number(dailyWorkHours),
         storyPointsPerHour: Number(storyPointsPerHour),
@@ -62,6 +86,7 @@ export function ConfigTab() {
         storyPointScale: spScale,
         workloadWarningOver: warnOver,
         workloadErrorOver: errOver,
+        defaultWorkingPeriods: defaultWorkingPeriodsParsed,
       };
       dispatch(updateConfig(newConfig));
       setError(null);
@@ -96,6 +121,12 @@ export function ConfigTab() {
             label="Escala de Story Points (vírgula)"
             value={storyPointScale}
             onChange={(e) => setStoryPointScale(e.target.value)}
+          />
+          <TextField
+            label="Períodos padrão (HH:mm-HH:mm; ...)"
+            value={defaultWorkingPeriods}
+            onChange={(e) => setDefaultWorkingPeriods(e.target.value)}
+            helperText="Ex.: 08:00-12:00; 13:00-17:00"
           />
           <TextField
             className={styles.jsonArea}

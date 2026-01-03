@@ -17,6 +17,7 @@ export interface Sprint {
 export interface CalendarState {
   nonWorkingDaysManual: DateString[];
   nonWorkingDaysRemoved: DateString[];
+  daySchedules: DaySchedule[];
 }
 
 export interface SprintState extends Sprint {}
@@ -58,6 +59,18 @@ export interface GlobalConfig {
   storyPointScale: number[];
   workloadWarningOver: number; // fraction over 1.0 (e.g., 0.1 => 10%)
   workloadErrorOver: number;   // fraction over 1.0 for red threshold
+  defaultWorkingPeriods: WorkingPeriod[];
+}
+
+export interface WorkingPeriod {
+  start: string; // HH:mm
+  end: string;   // HH:mm
+}
+
+export interface DaySchedule {
+  date: DateString;
+  isNonWorking: boolean;
+  periods: WorkingPeriod[];
 }
 
 export interface RootPersistedState {

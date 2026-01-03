@@ -15,6 +15,7 @@ type ImportPayload = {
   sprint?: RootPersistedState['sprint'];
   nonWorkingDaysManual?: string[];
   nonWorkingDaysRemoved?: string[];
+  daySchedules?: RootPersistedState['calendar']['daySchedules'];
   events?: RootPersistedState['events']['items'] | { items: RootPersistedState['events']['items'] };
   members?: RootPersistedState['members']['items'];
   tasks?: RootPersistedState['tasks']['items'];
@@ -35,6 +36,7 @@ export function ImportExportTab() {
     sprint: state.sprint,
     nonWorkingDaysManual: state.calendar.nonWorkingDaysManual,
     nonWorkingDaysRemoved: state.calendar.nonWorkingDaysRemoved,
+    daySchedules: state.calendar.daySchedules,
     events: state.events.items,
     members: state.members.items,
     tasks: state.tasks.items,
@@ -64,14 +66,13 @@ export function ImportExportTab() {
         return;
       }
       dispatch(updateSprint(data.sprint));
-      if (data.nonWorkingDaysManual || data.nonWorkingDaysRemoved) {
-        dispatch(
-          replaceCalendar({
-            nonWorkingDaysManual: data.nonWorkingDaysManual ?? [],
-            nonWorkingDaysRemoved: data.nonWorkingDaysRemoved ?? [],
-          }),
-        );
-      }
+      dispatch(
+        replaceCalendar({
+          nonWorkingDaysManual: data.nonWorkingDaysManual ?? [],
+          nonWorkingDaysRemoved: data.nonWorkingDaysRemoved ?? [],
+          daySchedules: data.daySchedules ?? [],
+        }),
+      );
       if (Array.isArray(data.events)) {
         dispatch(replaceEvents(data.events));
       } else if (data.events?.items) {

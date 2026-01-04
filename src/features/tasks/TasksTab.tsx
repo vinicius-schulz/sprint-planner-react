@@ -4,9 +4,15 @@ import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import {
   Alert,
   Button,
+  Checkbox,
   Card,
   CardContent,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
+  FormControlLabel,
   IconButton,
   MenuItem,
   Table,
@@ -20,6 +26,7 @@ import {
 import Autocomplete from '@mui/material/Autocomplete';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import BoltIcon from '@mui/icons-material/Bolt';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { addTask, removeTask, replaceTasks, setComputedTasks, updateTask } from './tasksSlice';
 import { validateTask } from '../../domain/services/validators';
@@ -71,6 +78,8 @@ export function TasksTab() {
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | 'end' | null>(null);
   const [infoTask, setInfoTask] = useState<TaskItem | null>(null);
+  const [turboTask, setTurboTask] = useState<TaskItem | null>(null);
+  const [turboValue, setTurboValue] = useState<number>(0);
 
   useEffect(() => {
     setStoryPoints(storyPointScale[0] ?? 1);
@@ -152,6 +161,13 @@ export function TasksTab() {
   const handleOpenInfo = (task: TaskItem) => setInfoTask(task);
   const handleCloseInfo = () => setInfoTask(null);
 
+  const effectiveStoryPoints = (task: TaskItem): number => {
+    if (task.turboEnabled && Number.isFinite(task.turboStoryPoints)) {
+      return Math.max(0, Number(task.turboStoryPoints));
+    }
+    return task.storyPoints;
+  };
+
   const capacityByMember = useMemo(() => {
     const map = new Map<string, number>();
     teamCapacity.members.forEach((mc) => map.set(mc.member.name, mc.storyPoints));
@@ -162,7 +178,7 @@ export function TasksTab() {
     const usage = new Map<string, number>();
     tasks.forEach((t) => {
       if (!t.assigneeMemberName) return;
-      usage.set(t.assigneeMemberName, (usage.get(t.assigneeMemberName) ?? 0) + (t.storyPoints || 0));
+      usage.set(t.assigneeMemberName, (usage.get(t.assigneeMemberName) ?? 0) + effectiveStoryPoints(t));
     });
 
     const list = teamCapacity.members.map((mc) => {
@@ -224,7 +240,7 @@ export function TasksTab() {
     return ids;
   }, [calcErrors]);
 
-  const totalStoryPoints = useMemo(() => tasks.reduce((sum, t) => sum + (t.storyPoints || 0), 0), [tasks]);
+  const totalStoryPoints = useMemo(() => tasks.reduce((sum, t) => sum + effectiveStoryPoints(t), 0), [tasks]);
   const capacityStoryPoints = teamCapacity.totalStoryPoints;
   const capacityRatio = capacityStoryPoints > 0 ? totalStoryPoints / capacityStoryPoints : Infinity;
   const warnLimit = 1 + config.workloadWarningOver;
@@ -244,7 +260,7 @@ export function TasksTab() {
     const memberName = task.assigneeMemberName;
     if (!memberName) return styles.statusGreen;
     const capacity = capacityByMember.get(memberName) ?? 0;
-    const currentTotal = (runningTotals.get(memberName) ?? 0) + task.storyPoints;
+    const currentTotal = (runningTotals.get(memberName) ?? 0) + effectiveStoryPoints(task);
     runningTotals.set(memberName, currentTotal);
     if (capacity <= 0 && currentTotal > 0) return styles.statusRed;
     const ratio = currentTotal / capacity;
@@ -497,6 +513,12 @@ export function TasksTab() {
                         <IconButton aria-label="detalhes" onClick={() => handleOpenInfo(task)}>
                           <InfoOutlinedIcon />
                         </IconButton>
+                        <IconButton aria-label="turbo" onClick={() => {
+                          setTurboTask(task);
+                          setTurboValue(task.turboEnabled ? Number(task.turboStoryPoints) || 0 : task.storyPoints);
+                        }}>
+                          <BoltIcon color={task.turboEnabled ? 'warning' : 'disabled'} />
+                        </IconButton>
                       </TableCell>
                     </TableRow>,
                   );
@@ -531,6 +553,56 @@ export function TasksTab() {
         formatDateTime={formatDateTimeBr}
         storyPointsPerHour={config.storyPointsPerHour}
       />
+      <Dialog open={!!turboTask} onClose={() => setTurboTask(null)} maxWidth="xs" fullWidth>
+        <DialogTitle>Turbo da tarefa</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" gutterBottom>
+            Story Points originais: {turboTask?.storyPoints ?? '-'}
+          </Typography>
+          <TextField
+            label="Story Points turbo"
+            type="number"
+            fullWidth
+            value={turboValue}
+            onChange={(e) => setTurboValue(Number(e.target.value))}
+            InputProps={{ inputProps: { min: 0 } }}
+            helperText="Valor usado nos cálculos quando turbo estiver ligado"
+            sx={{ mt: 1 }}
+          />
+          <FormControlLabel
+            control={
+              <Checkbox
+                checked={!!turboTask?.turboEnabled}
+                onChange={(e) => setTurboTask((prev) => (prev ? { ...prev, turboEnabled: e.target.checked } : prev))}
+              />
+            }
+            label="Ativar turbo para esta tarefa"
+            sx={{ mt: 1 }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTurboTask(null)}>Cancelar</Button>
+          <Button
+            variant="contained"
+            onClick={() => {
+              if (!turboTask) return;
+              const enabled = turboTask.turboEnabled ?? false;
+              dispatch(
+                updateTask({
+                  id: turboTask.id,
+                  updates: {
+                    turboEnabled: enabled,
+                    turboStoryPoints: Number(turboValue),
+                  },
+                }),
+              );
+              setTurboTask(null);
+            }}
+          >
+            Salvar
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Card>
   );
 }

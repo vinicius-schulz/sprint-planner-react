@@ -252,9 +252,15 @@ export const computeTaskSchedules = (
     map.set(dayIndex, newUsage);
   };
 
+  const effectiveStoryPoints = (task: TaskItem) =>
+    task.turboEnabled && Number.isFinite(task.turboStoryPoints)
+      ? Math.max(0, task.turboStoryPoints || 0)
+      : task.storyPoints;
+
   const durationMinutesForTask = (task: TaskItem) => {
     if (config.storyPointsPerHour <= 0) return 0;
-    return Math.max(0, Math.ceil((task.storyPoints / config.storyPointsPerHour) * 60));
+    const sp = effectiveStoryPoints(task);
+    return Math.max(0, Math.ceil((sp / config.storyPointsPerHour) * 60));
   };
 
   const completed = new Map<string, { dayIndex: number; minuteOffset: number }>();

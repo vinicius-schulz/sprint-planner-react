@@ -24,7 +24,13 @@ const tasksSlice = createSlice({
         task.dependencies = task.dependencies.filter((depId) => depId !== removedId);
       });
     },
-    updateTask(state, action: PayloadAction<{ id: string; updates: Partial<Pick<TaskItem, 'name' | 'assigneeMemberName' | 'storyPoints' | 'dependencies'>> }>) {
+    updateTask(
+      state,
+      action: PayloadAction<{
+        id: string;
+        updates: Partial<Pick<TaskItem, 'name' | 'assigneeMemberName' | 'storyPoints' | 'dependencies' | 'turboStoryPoints' | 'turboEnabled'>>;
+      }>,
+    ) {
       const { id, updates } = action.payload;
       const idx = state.items.findIndex((task) => task.id === id);
       if (idx === -1) return;

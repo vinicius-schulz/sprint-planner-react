@@ -22,7 +22,12 @@ export function SummaryBoard() {
   const workingHours = useAppSelector(selectWorkingHours);
   const calendar = useAppSelector(selectWorkingCalendar);
   const capacity = useAppSelector(selectTeamCapacity);
-  const tasksTotalSp = useAppSelector((state) => state.tasks.items.reduce((sum, t) => sum + (t.storyPoints || 0), 0));
+  const tasksTotalSp = useAppSelector((state) =>
+    state.tasks.items.reduce((sum, t) => {
+      const sp = t.turboEnabled && Number.isFinite(t.turboStoryPoints) ? Number(t.turboStoryPoints) : t.storyPoints;
+      return sum + (sp || 0);
+    }, 0),
+  );
 
   return (
     <div className={styles.grid}>

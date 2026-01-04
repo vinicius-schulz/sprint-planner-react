@@ -53,6 +53,8 @@ export interface TaskItem {
   name: string;
   assigneeMemberName?: string;
   storyPoints: number;
+  turboStoryPoints?: number;
+  turboEnabled?: boolean;
   dependencies: string[];
   computedStartDate?: DateString;
   computedEndDate?: DateString;

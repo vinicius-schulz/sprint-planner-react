@@ -24,6 +24,7 @@ import { renameAssignee } from '../tasks/tasksSlice';
 import { validateMember } from '../../domain/services/validators';
 import { computeMemberCapacity, selectWorkingHours } from '../../domain/services/capacityService';
 import type { Member, MemberEvent } from '../../domain/types';
+import { DEFAULT_CONFIG } from '../../domain/constants';
 import styles from './TeamTab.module.css';
 
 const SENIORITIES: Member['seniority'][] = ['Sênior', 'Pleno', 'Júnior'];
@@ -43,6 +44,10 @@ export function TeamTab() {
   const members = useAppSelector((state) => state.members.items);
   const config = useAppSelector((state) => state.config.value);
   const workingHours = useAppSelector(selectWorkingHours);
+  const countedTypes = useMemo(
+    () => new Set(config.countedMemberTypes ?? DEFAULT_CONFIG.countedMemberTypes),
+    [config.countedMemberTypes],
+  );
   const [name, setName] = useState('');
   const [roleType, setRoleType] = useState('Desenvolvedor');
   const [seniority, setSeniority] = useState<Member['seniority']>('Pleno');
@@ -297,6 +302,7 @@ export function TeamTab() {
           {members.length === 0 && <Typography variant="body2">Nenhum membro adicionado.</Typography>}
           {members.map((member) => {
             const capacity = computeMemberCapacity(member, workingHours, config);
+            const isCounted = countedTypes.has(member.roleType);
             return (
               <Card key={member.id} variant="outlined">
                 <CardHeader
@@ -317,7 +323,7 @@ export function TeamTab() {
                   <Stack direction="row" spacing={2} flexWrap="wrap">
                     <Stack spacing={0.5} minWidth={160}>
                       <Typography variant="body2">
-                        {member.useAdvancedAvailability ? 'Disponibilidade (avançada)' : 'Disponibilidade'}
+                        Disponibilidade
                       </Typography>
                       <Typography variant="h6">{member.availabilityPercent}%</Typography>
                       {member.useAdvancedAvailability && (
@@ -326,10 +332,12 @@ export function TeamTab() {
                         </Typography>
                       )}
                     </Stack>
-                    <Stack spacing={0.5} minWidth={160}>
-                      <Typography variant="body2">Capacidade (SP)</Typography>
-                      <Typography variant="h6">{capacity.storyPoints.toFixed(2)}</Typography>
-                    </Stack>
+                    {isCounted && (
+                      <Stack spacing={0.5} minWidth={160}>
+                        <Typography variant="body2">Capacidade (SP)</Typography>
+                        <Typography variant="h6">{capacity.storyPoints.toFixed(2)}</Typography>
+                      </Stack>
+                    )}
                   </Stack>
                   {member.useAdvancedAvailability && (member.availabilityEvents?.length ?? 0) > 0 && (
                     <div className={styles.cardEvents}>

@@ -22,6 +22,10 @@ export function SummaryBoard() {
   const workingHours = useAppSelector(selectWorkingHours);
   const calendar = useAppSelector(selectWorkingCalendar);
   const capacity = useAppSelector(selectTeamCapacity);
+  const countedCapacity = useAppSelector((state) => {
+    const countedTypes = new Set(state.config.value.countedMemberTypes);
+    return state.members.items.filter((m) => countedTypes.has(m.roleType)).length;
+  });
   const tasksTotalSp = useAppSelector((state) => {
     const countedTypes = new Set(state.config.value.countedMemberTypes);
     const countedNames = new Set(

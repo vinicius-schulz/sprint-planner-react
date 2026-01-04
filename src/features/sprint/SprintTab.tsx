@@ -8,7 +8,6 @@ import { setDaySchedules, updateDaySchedule } from '../calendar/calendarSlice';
 import { formatHoursToClock } from '../../domain/services/timeFormat';
 import {
   TextField,
-  Button,
   Card,
   CardContent,
   Typography,
@@ -38,15 +37,10 @@ export function SprintTab() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!startDate || !endDate) return;
-    const candidate = { title, startDate, endDate };
-    const generated = buildDaySchedules(candidate, config, calendar.daySchedules ?? []);
-    dispatch(setDaySchedules(generated));
-  // calendar.daySchedules intentionally read inside to preserve edits without re-triggering endlessly
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate, title, config, dispatch]);
-
-  const handleUpdate = () => {
+    if (!startDate || !endDate) {
+      setError(null);
+      return;
+    }
     const candidate = { title: title || 'Sprint sem título', startDate, endDate };
     const validation = validateSprint(candidate);
     if (validation) {
@@ -57,7 +51,9 @@ export function SprintTab() {
     dispatch(updateSprint(candidate));
     const generated = buildDaySchedules(candidate, config, calendar.daySchedules ?? []);
     dispatch(setDaySchedules(generated));
-  };
+  // calendar.daySchedules intentionally read inside to preserve edits without re-triggering endlessly
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [startDate, endDate, title, config, dispatch]);
 
   const handleToggleNonWorking = (day: DaySchedule, checked: boolean) => {
     dispatch(updateDaySchedule({ ...day, isNonWorking: checked }));
@@ -106,9 +102,6 @@ export function SprintTab() {
             onChange={(e) => setEndDate(e.target.value)}
             InputLabelProps={{ shrink: true }}
           />
-          <Button variant="contained" onClick={handleUpdate}>
-            Atualizar Sprint
-          </Button>
         </div>
         {error && <Alert severity="error" className={styles.error}>{error}</Alert>}
         <div className={styles.metrics}>

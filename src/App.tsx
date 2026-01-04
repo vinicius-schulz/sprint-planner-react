@@ -108,6 +108,20 @@ function App() {
             </Step>
           ))}
         </Stepper>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+          <Button variant="outlined" onClick={() => goToStep(activeStep - 1)} disabled={activeStep === 0}>
+            Anterior
+          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="contained"
+              onClick={() => goToStep(activeStep + 1)}
+              disabled={activeStep === steps.length - 1}
+            >
+              Próximo
+            </Button>
+          </Stack>
+        </Box>
       </Box>
       <Box sx={{ mt: 2 }}>
         {steps[activeStep]?.element}
@@ -123,16 +137,6 @@ function App() {
               disabled={activeStep === steps.length - 1}
             >
               Próximo
-            </Button>
-          </Stack>
-        </Box>
-        <Box sx={{ mt: 4 }}>
-          <Stack direction="row" spacing={1}>
-            <Button variant="outlined" onClick={() => goToStep(0)}>
-              Reiniciar wizard
-            </Button>
-            <Button variant="text" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
-              Voltar ao topo
             </Button>
           </Stack>
         </Box>

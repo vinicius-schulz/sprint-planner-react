@@ -20,6 +20,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { addMember, removeMember, updateMember } from './membersSlice';
+import { renameAssignee } from '../tasks/tasksSlice';
 import { validateMember } from '../../domain/services/validators';
 import { computeMemberCapacity, selectWorkingCalendar, selectWorkingHours } from '../../domain/services/capacityService';
 import { computeDayHours } from '../../domain/services/workingCalendar';
@@ -51,6 +52,7 @@ export function TeamTab() {
   const [error, setError] = useState<string | null>(null);
   const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingOriginalName, setEditingOriginalName] = useState<string>('');
 
   const createBlankEvent = (): MemberEvent => ({
     id: crypto.randomUUID(),
@@ -80,6 +82,7 @@ export function TeamTab() {
 
   const startEdit = (member: Member) => {
     setEditingId(member.id);
+    setEditingOriginalName(member.name);
     setName(member.name);
     setRoleType(member.roleType);
     setSeniority(member.seniority);
@@ -93,6 +96,7 @@ export function TeamTab() {
 
   const cancelEdit = () => {
     setEditingId(null);
+    setEditingOriginalName('');
     setName('');
     setRoleType('Desenvolvedor');
     setSeniority('Pleno');
@@ -143,12 +147,17 @@ export function TeamTab() {
     }
     setError(null);
     if (editingId) {
+      const oldName = editingOriginalName;
+      const newName = name;
       dispatch(
         updateMember({
           id: editingId,
           ...base,
         }),
       );
+      if (oldName && oldName !== newName) {
+        dispatch(renameAssignee({ oldName, newName }));
+      }
     } else {
       dispatch(
         addMember({

@@ -39,6 +39,12 @@ const tasksSlice = createSlice({
     replaceTasks(state, action: PayloadAction<TaskItem[]>) {
       state.items = action.payload;
     },
+    renameAssignee(state, action: PayloadAction<{ oldName: string; newName: string }>) {
+      const { oldName, newName } = action.payload;
+      state.items = state.items.map((task) =>
+        task.assigneeMemberName === oldName ? { ...task, assigneeMemberName: newName } : task,
+      );
+    },
     setComputedTasks(state, action: PayloadAction<TaskItem[]>) {
       state.items = action.payload;
     },
@@ -48,5 +54,5 @@ const tasksSlice = createSlice({
   },
 });
 
-export const { addTask, removeTask, updateTask, replaceTasks, setComputedTasks, resetTasks } = tasksSlice.actions;
+export const { addTask, removeTask, updateTask, replaceTasks, renameAssignee, setComputedTasks, resetTasks } = tasksSlice.actions;
 export default tasksSlice.reducer;

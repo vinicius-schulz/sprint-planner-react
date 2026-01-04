@@ -5,6 +5,7 @@ import { validateSprint } from '../../domain/services/validators';
 import { selectWorkingCalendar, selectWorkingHours } from '../../domain/services/capacityService';
 import { buildDaySchedules, computeDayHours } from '../../domain/services/workingCalendar';
 import { setDaySchedules, updateDaySchedule } from '../calendar/calendarSlice';
+import { formatHoursToClock } from '../../domain/services/timeFormat';
 import {
   TextField,
   Button,
@@ -113,7 +114,7 @@ export function SprintTab() {
         <div className={styles.metrics}>
           <Stack spacing={0.5}>
             <Typography variant="subtitle2">Horas Úteis Calculadas</Typography>
-            <Typography variant="h5">{workingHours.toFixed(2)} h</Typography>
+            <Typography variant="h5">{formatHoursToClock(workingHours)}</Typography>
           </Stack>
           <Stack spacing={0.5}>
             <Typography variant="subtitle2">Dias Úteis</Typography>
@@ -121,7 +122,7 @@ export function SprintTab() {
           </Stack>
           <Stack spacing={0.5}>
             <Typography variant="subtitle2">Horas planeadas (por dia)</Typography>
-            <Typography variant="h5">{totalHoursPreview.toFixed(2)} h</Typography>
+            <Typography variant="h5">{formatHoursToClock(totalHoursPreview)}</Typography>
           </Stack>
         </div>
         {daySchedules.length > 0 && (
@@ -176,7 +177,7 @@ export function SprintTab() {
                           disabled={day.isNonWorking}
                         />
                       </TableCell>
-                      <TableCell>{hours.toFixed(2)} h</TableCell>
+                      <TableCell>{formatHoursToClock(hours)}</TableCell>
                       <TableCell>
                         <FormControlLabel
                           control={(

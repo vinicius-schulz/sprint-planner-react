@@ -17,6 +17,10 @@ const membersSlice = createSlice({
     addMember(state, action: PayloadAction<Member>) {
       state.items.push(action.payload);
     },
+    updateMember(state, action: PayloadAction<Member>) {
+      const idx = state.items.findIndex((m) => m.id === action.payload.id);
+      if (idx !== -1) state.items[idx] = action.payload;
+    },
     removeMember(state, action: PayloadAction<string>) {
       state.items = state.items.filter((member) => member.id !== action.payload);
     },
@@ -29,5 +33,5 @@ const membersSlice = createSlice({
   },
 });
 
-export const { addMember, removeMember, replaceMembers, resetMembers } = membersSlice.actions;
+export const { addMember, updateMember, removeMember, replaceMembers, resetMembers } = membersSlice.actions;
 export default membersSlice.reducer;

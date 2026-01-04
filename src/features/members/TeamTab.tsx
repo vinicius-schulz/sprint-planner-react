@@ -17,8 +17,9 @@ import {
   Typography,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { addMember, removeMember } from './membersSlice';
+import { addMember, removeMember, updateMember } from './membersSlice';
 import { validateMember } from '../../domain/services/validators';
 import { computeMemberCapacity, selectWorkingCalendar, selectWorkingHours } from '../../domain/services/capacityService';
 import { computeDayHours } from '../../domain/services/workingCalendar';
@@ -49,6 +50,7 @@ export function TeamTab() {
   });
   const [error, setError] = useState<string | null>(null);
   const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const createBlankEvent = (): MemberEvent => ({
     id: crypto.randomUUID(),
@@ -74,6 +76,32 @@ export function TeamTab() {
     if (memberEvents.length === 0) {
       setMemberEvents([]);
     }
+  };
+
+  const startEdit = (member: Member) => {
+    setEditingId(member.id);
+    setName(member.name);
+    setRoleType(member.roleType);
+    setSeniority(member.seniority);
+    setMaturity(member.maturity);
+    setAvailabilityPercent(member.availabilityPercent);
+    const advanced = !!member.useAdvancedAvailability;
+    setUseAdvancedAvailability(advanced);
+    setMemberEvents(member.availabilityEvents ?? []);
+    setEventDraft(createBlankEvent());
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setName('');
+    setRoleType('Desenvolvedor');
+    setSeniority('Pleno');
+    setMaturity('Plena');
+    setAvailabilityPercent(100);
+    setUseAdvancedAvailability(false);
+    setMemberEvents([]);
+    setEventDraft(createBlankEvent());
+    setError(null);
   };
 
   const handleDraftChange = (field: keyof MemberEvent, value: string) => {
@@ -114,16 +142,22 @@ export function TeamTab() {
       return;
     }
     setError(null);
-    dispatch(
-      addMember({
-        id: crypto.randomUUID(),
-        ...base,
-      }),
-    );
-    setName('');
-    setAvailabilityPercent(100);
-    setUseAdvancedAvailability(false);
-    setMemberEvents([]);
+    if (editingId) {
+      dispatch(
+        updateMember({
+          id: editingId,
+          ...base,
+        }),
+      );
+    } else {
+      dispatch(
+        addMember({
+          id: crypto.randomUUID(),
+          ...base,
+        }),
+      );
+    }
+    cancelEdit();
   };
 
   return (
@@ -190,7 +224,12 @@ export function TeamTab() {
               </Stack>
             </div>
           )}
-          <Button variant="contained" onClick={handleAdd}>Adicionar Membro</Button>
+          <Stack direction="row" spacing={1} flexWrap="wrap">
+            <Button variant="contained" onClick={handleAdd}>{editingId ? 'Salvar alterações' : 'Adicionar Membro'}</Button>
+            {editingId && (
+              <Button variant="text" onClick={cancelEdit}>Cancelar</Button>
+            )}
+          </Stack>
         </div>
         {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
         <div className={styles.cards}>
@@ -203,9 +242,14 @@ export function TeamTab() {
                   title={member.name}
                   subheader={`${member.roleType} • ${member.seniority} • ${member.maturity}`}
                   action={
-                    <IconButton aria-label="remover" onClick={() => dispatch(removeMember(member.id))}>
-                      <DeleteIcon />
-                    </IconButton>
+                    <Stack direction="row" spacing={0.5}>
+                      <IconButton aria-label="editar" onClick={() => startEdit(member)}>
+                        <EditIcon />
+                      </IconButton>
+                      <IconButton aria-label="remover" onClick={() => dispatch(removeMember(member.id))}>
+                        <DeleteIcon />
+                      </IconButton>
+                    </Stack>
                   }
                 />
                 <CardContent>

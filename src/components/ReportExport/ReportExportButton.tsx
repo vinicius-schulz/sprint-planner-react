@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { Button, Snackbar, Alert } from '@mui/material';
 import { useAppSelector } from '../../app/hooks';
 import { selectWorkingCalendar } from '../../domain/services/capacityService';
+import { formatMinutesToClock } from '../../domain/services/timeFormat';
 import type { TaskItem } from '../../domain/types';
 import styles from './ReportExportButton.module.css';
 
@@ -28,11 +29,7 @@ const formatDateTimeBr = (value?: string) => {
   return cleaned;
 };
 
-const formatMinutesToHours = (minutes?: number) => {
-  if (minutes == null || Number.isNaN(minutes)) return '-';
-  const hours = minutes / 60;
-  return `${hours.toFixed(2)} h`;
-};
+const formatMinutesToHours = (minutes?: number) => formatMinutesToClock(minutes);
 
 export function ReportExportButton({ renderTrigger }: ReportExportButtonProps) {
   const sprint = useAppSelector((state) => state.sprint);

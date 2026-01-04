@@ -11,6 +11,7 @@ import {
   Divider,
 } from '@mui/material';
 import type { TaskItem } from '../../domain/types';
+import { formatHoursToClock, formatMinutesToClock } from '../../domain/services/timeFormat';
 import styles from './TasksTab.module.css';
 
 interface Props {
@@ -43,7 +44,7 @@ export function TaskInfoDialog({ open, task, onClose, formatDateTime, storyPoint
             <Typography variant="body2" gutterBottom>Fim: {formatDateTime(task.computedEndDate)}</Typography>
             <Typography variant="body2">Story Points: {sp}</Typography>
             <Typography variant="body2" gutterBottom>
-              Total planejado: {totalHours.toFixed(1)} h úteis ({totalMinutes} min) — equivalente a {storyHours.toFixed(1)} h pela taxa de SP ({storyPointsPerHour} SP/h)
+              Total planejado: {formatHoursToClock(totalHours)} úteis ({formatMinutesToClock(totalMinutes)}) — equivalente a {formatHoursToClock(storyHours)} pela taxa de SP ({storyPointsPerHour} SP/h)
             </Typography>
 
             <Typography variant="subtitle2" gutterBottom>Plano por dia</Typography>

@@ -112,7 +112,7 @@ export const computeMemberCapacity = (
   const seniorityFactor = config.seniorityFactors[member.seniority] ?? 1;
   const maturityFactor = config.maturityFactors[member.maturity] ?? 1;
   const hours = workingHours * (member.availabilityPercent / 100) * seniorityFactor * maturityFactor;
-  const storyPoints = hours * config.storyPointsPerHour;
+  const storyPoints = Math.round(hours * config.storyPointsPerHour);
   return { member, hours, storyPoints };
 };
 

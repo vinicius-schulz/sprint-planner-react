@@ -283,6 +283,10 @@ export function TasksTab() {
     if (isAfterSprint(task) || overshootFromErrors.has(task.id)) return styles.statusRed;
     const memberName = task.assigneeMemberName;
     if (!memberName) return styles.statusGreen;
+
+    const isCounted = countedMemberNames.has(memberName);
+    if (!isCounted) return styles.statusGreen;
+
     const capacity = capacityByMember.get(memberName) ?? 0;
     const currentTotal = (runningTotals.get(memberName) ?? 0) + effectiveStoryPoints(task);
     runningTotals.set(memberName, currentTotal);

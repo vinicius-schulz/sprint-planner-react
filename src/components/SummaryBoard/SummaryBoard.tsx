@@ -22,6 +22,7 @@ export function SummaryBoard() {
   const workingHours = useAppSelector(selectWorkingHours);
   const calendar = useAppSelector(selectWorkingCalendar);
   const capacity = useAppSelector(selectTeamCapacity);
+  const tasksTotalSp = useAppSelector((state) => state.tasks.items.reduce((sum, t) => sum + (t.storyPoints || 0), 0));
 
   return (
     <div className={styles.grid}>
@@ -29,6 +30,7 @@ export function SummaryBoard() {
       <Metric label="Horas úteis" value={formatHoursToClock(workingHours)} hint="Descontando eventos" />
       <Metric label="Capacidade total" value={`${capacity.totalStoryPoints.toFixed(2)} SP`} hint="Com fatores e disponibilidade" />
       <Metric label="Membros" value={String(capacity.members.length)} />
+      <Metric label="SP das tarefas" value={`${tasksTotalSp.toFixed(2)} SP`} hint="Total planejado na sprint" />
     </div>
   );
 }

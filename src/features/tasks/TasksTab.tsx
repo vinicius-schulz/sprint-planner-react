@@ -295,7 +295,7 @@ export function TasksTab() {
         {capacitySeverity && (
           <Alert severity={capacitySeverity === 'error' ? 'error' : 'warning'} sx={{ mt: 1 }}>
             Story Points planejados ({totalStoryPoints}) excedem a capacidade da sprint ({capacityStoryPoints}).
-            Limites: aviso até {(warnLimit - 1) * 100}% e erro acima de {(errLimit - 1) * 100}% sobre a capacidade.
+            Limites: aviso até {Math.round((warnLimit - 1) * 100)}% e erro acima de {Math.round((errLimit - 1) * 100)}% sobre a capacidade.
           </Alert>
         )}
         {overshootTasks.length + overshootFromErrors.size > 0 && (

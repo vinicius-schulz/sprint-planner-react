@@ -80,6 +80,12 @@ export function TeamTab() {
     description: '',
   });
 
+  const handleRemoveMember = (memberId: string, memberName: string) => {
+    const confirmed = window.confirm(`Remover membro ${memberName}?`);
+    if (!confirmed) return;
+    dispatch(removeMember(memberId));
+  };
+
   const normalizedEvents = memberEvents.filter((ev) => Number.isFinite(ev.minutes) && ev.minutes > 0);
 
   const derivedAvailabilityPercent = useAdvancedAvailability
@@ -313,7 +319,7 @@ export function TeamTab() {
                       <IconButton aria-label="editar" onClick={() => startEdit(member)}>
                         <EditIcon />
                       </IconButton>
-                      <IconButton aria-label="remover" onClick={() => dispatch(removeMember(member.id))}>
+                      <IconButton aria-label="remover" onClick={() => handleRemoveMember(member.id, member.name)}>
                         <DeleteIcon />
                       </IconButton>
                     </Stack>

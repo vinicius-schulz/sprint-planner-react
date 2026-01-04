@@ -186,6 +186,12 @@ export function TasksTab() {
   const handleOpenInfo = (task: TaskItem) => setInfoTask(task);
   const handleCloseInfo = () => setInfoTask(null);
 
+  const handleRemoveTask = (task: TaskItem) => {
+    const confirmed = window.confirm(`Remover tarefa ${task.id} - ${task.name}?`);
+    if (!confirmed) return;
+    dispatch(removeTask(task.id));
+  };
+
   const handleOpenEdit = (task: TaskItem) => {
     setEditTask(task);
     setEditDraft({
@@ -623,7 +629,7 @@ export function TasksTab() {
                       </TableCell>
                       <TableCell>
                         <div className={styles.actionsGroup}>
-                          <IconButton aria-label="remover" onClick={() => dispatch(removeTask(task.id))} size="small">
+                          <IconButton aria-label="remover" onClick={() => handleRemoveTask(task)} size="small">
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                           <IconButton aria-label="detalhes" onClick={() => handleOpenInfo(task)} size="small">

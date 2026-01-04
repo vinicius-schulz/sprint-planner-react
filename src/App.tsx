@@ -15,7 +15,6 @@ import {
   Typography,
 } from '@mui/material';
 import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import './App.css';
 import { SprintTab } from './features/sprint/SprintTab';
 import { EventsTab } from './features/events/EventsTab';
@@ -27,11 +26,13 @@ import { NewSchedulePanel } from './components/NewSchedulePanel';
 import { ReportExportButton } from './components/ReportExport';
 import { ConfigTab } from './features/config/ConfigTab';
 import { ImportExportTab } from './features/importExport/ImportExportTab';
+import logo from './assets/logo.svg';
 
 function App() {
   const [activeStep, setActiveStep] = useState(0);
   const [configOpen, setConfigOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [scheduleOpen, setScheduleOpen] = useState(false);
 
   const steps = useMemo(
     () => [
@@ -47,26 +48,31 @@ function App() {
     setActiveStep(Math.max(0, Math.min(index, steps.length - 1)));
   };
 
+  const startConfiguration = () => {
+    setScheduleOpen(true);
+  };
+
   return (
     <>
       <AppBar position="fixed" color="default" elevation={1}>
         <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
-          <Typography variant="h6" sx={{ flexGrow: 1 }}>
-            Calculadora de Capacidade Scrum
-          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ flexGrow: 1 }}>
+            <Box
+              component="img"
+              src={logo}
+              alt="Logo"
+              sx={{ width: 40, height: 40, borderRadius: 2, boxShadow: 1, bgcolor: 'background.paper' }}
+            />
+            <Typography variant="h6" sx={{ mb: 0 }}>
+              Calculadora de Capacidade Scrum
+            </Typography>
+          </Stack>
           <Button variant="text" color="inherit" onClick={() => setConfigOpen(true)}>
             Configurações
           </Button>
           <Button variant="text" color="inherit" onClick={() => setImportOpen(true)}>
             Exportar / Importar
           </Button>
-          <NewSchedulePanel
-            renderTrigger={(open) => (
-              <Button variant="outlined" startIcon={<SettingsOutlinedIcon />} onClick={open}>
-                Dados & cronograma
-              </Button>
-            )}
-          />
           <ReportExportButton
             renderTrigger={(onExport) => (
               <Button variant="contained" startIcon={<PictureAsPdfOutlinedIcon />} onClick={onExport}>
@@ -83,7 +89,7 @@ function App() {
           <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
             Planejamento de sprint
           </Typography>
-          <Button variant="contained" onClick={() => goToStep(0)}>
+          <Button variant="contained" onClick={startConfiguration}>
             Iniciar configuração
           </Button>
         </Box>
@@ -145,6 +151,16 @@ function App() {
           <ImportExportTab />
         </DialogContent>
       </Dialog>
+
+      <NewSchedulePanel
+        renderTrigger={() => null}
+        openExternal={scheduleOpen}
+        onCloseExternal={() => setScheduleOpen(false)}
+        onContinue={() => {
+          setScheduleOpen(false);
+          goToStep(0);
+        }}
+      />
     </>
   );
 }

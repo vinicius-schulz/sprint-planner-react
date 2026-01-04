@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   Alert,
@@ -8,7 +8,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  Divider,
   FormControlLabel,
   Snackbar,
   Stack,
@@ -25,9 +24,12 @@ import styles from './NewSchedulePanel.module.css';
 
 type NewSchedulePanelProps = {
   renderTrigger?: (open: () => void) => ReactNode;
+  openExternal?: boolean;
+  onCloseExternal?: () => void;
+  onContinue?: () => void;
 };
 
-export function NewSchedulePanel({ renderTrigger }: NewSchedulePanelProps) {
+export function NewSchedulePanel({ renderTrigger, openExternal, onCloseExternal, onContinue }: NewSchedulePanelProps) {
   const dispatch = useAppDispatch();
   const tasks = useAppSelector((state) => state.tasks.items);
 
@@ -48,8 +50,6 @@ export function NewSchedulePanel({ renderTrigger }: NewSchedulePanelProps) {
   const handleCloseToast = () => setToast((prev) => ({ ...prev, open: false }));
 
   const handleNewSchedule = () => {
-    const ok = window.confirm('Criar novo cronograma e limpar dados conforme seleção?');
-    if (!ok) return;
     dispatch(resetSprint());
     dispatch(resetCalendar());
 
@@ -87,21 +87,6 @@ export function NewSchedulePanel({ renderTrigger }: NewSchedulePanelProps) {
     showToast(`Novo cronograma criado. Mantido: ${kept.length ? kept.join(', ') : 'nada'}.`, 'info');
   };
 
-  const confirmAnd = (message: string, fn: () => void) => {
-    if (window.confirm(message)) {
-      fn();
-      return true;
-    }
-    return false;
-  };
-
-  const handleClearSprint = () => confirmAnd('Limpar sprint atual?', () => { dispatch(resetSprint()); showToast('Sprint limpa.'); });
-  const handleClearCalendar = () => confirmAnd('Limpar calendário?', () => { dispatch(resetCalendar()); showToast('Calendário limpo.'); });
-  const handleClearEvents = () => confirmAnd('Limpar eventos?', () => { dispatch(resetEvents()); showToast('Eventos limpos.'); });
-  const handleClearTeam = () => confirmAnd('Limpar time?', () => { dispatch(resetMembers()); showToast('Time limpo.'); });
-  const handleClearTasks = () => confirmAnd('Limpar tarefas?', () => { dispatch(resetTasks()); showToast('Tarefas limpas.'); });
-  const handleClearConfig = () => confirmAnd('Resetar configurações?', () => { dispatch(resetConfig()); showToast('Configurações resetadas.'); });
-
   const trigger = renderTrigger
     ? renderTrigger(() => setOpen(true))
     : (
@@ -110,11 +95,22 @@ export function NewSchedulePanel({ renderTrigger }: NewSchedulePanelProps) {
       </Button>
     );
 
+  useEffect(() => {
+    if (typeof openExternal === 'boolean') {
+      setOpen(openExternal);
+    }
+  }, [openExternal]);
+
+  const handleClose = () => {
+    setOpen(false);
+    onCloseExternal?.();
+  };
+
   return (
     <>
       {trigger}
 
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
+      <Dialog open={open} onClose={handleClose} maxWidth="md" fullWidth>
         <DialogTitle>Dados & Cronograma</DialogTitle>
         <DialogContent dividers>
           <Typography variant="body2" color="text.secondary" gutterBottom>
@@ -140,27 +136,22 @@ export function NewSchedulePanel({ renderTrigger }: NewSchedulePanelProps) {
                 label="Manter configurações"
               />
             </Stack>
-            <Button variant="contained" onClick={handleNewSchedule} color="primary">
-              Criar novo cronograma
-            </Button>
-          </Stack>
-
-          <Divider className={styles.divider} />
-
-          <Stack spacing={2} className={styles.section}>
-            <Typography variant="subtitle1">Limpar por seção</Typography>
-            <Stack direction="row" spacing={1} flexWrap="wrap">
-              <Button variant="outlined" onClick={handleClearSprint}>Limpar Sprint</Button>
-              <Button variant="outlined" onClick={handleClearCalendar}>Limpar Calendário</Button>
-              <Button variant="outlined" onClick={handleClearEvents}>Limpar Eventos</Button>
-              <Button variant="outlined" onClick={handleClearTeam}>Limpar Time</Button>
-              <Button variant="outlined" onClick={handleClearTasks}>Limpar Tarefas</Button>
-              <Button variant="outlined" onClick={handleClearConfig}>Resetar Configuração</Button>
-            </Stack>
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>Fechar</Button>
+          <Button onClick={handleClose}>Fechar</Button>
+          {onContinue && (
+            <Button
+              variant="contained"
+              onClick={() => {
+                handleNewSchedule();
+                handleClose();
+                onContinue();
+              }}
+            >
+              Continuar
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 

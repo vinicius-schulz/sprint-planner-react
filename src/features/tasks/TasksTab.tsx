@@ -4,7 +4,6 @@ import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import {
   Alert,
   Button,
-  Checkbox,
   Card,
   CardContent,
   Chip,
@@ -12,7 +11,6 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControlLabel,
   IconButton,
   MenuItem,
   Table,
@@ -80,6 +78,18 @@ export function TasksTab() {
   const [infoTask, setInfoTask] = useState<TaskItem | null>(null);
   const [turboTask, setTurboTask] = useState<TaskItem | null>(null);
   const [turboValue, setTurboValue] = useState<number>(0);
+
+  const turboOptions = useMemo(() => {
+    const original = turboTask?.storyPoints ?? Infinity;
+    const base = Array.from(new Set(storyPointScale.filter((sp) => sp <= original)));
+    if (turboTask && Number.isFinite(turboValue) && turboValue <= original && !base.includes(turboValue)) {
+      base.push(Number(turboValue));
+    }
+    if (turboTask && base.length === 0 && Number.isFinite(original)) {
+      base.push(original);
+    }
+    return base.sort((a, b) => a - b);
+  }, [storyPointScale, turboTask, turboValue]);
 
   useEffect(() => {
     setStoryPoints(storyPointScale[0] ?? 1);
@@ -416,10 +426,10 @@ export function TasksTab() {
                   }
 
                   rows.push(
-                    <TableRow
+                      <TableRow
                       key={task.id}
                       hover
-                      className={rowClass}
+                      className={[rowClass, task.turboEnabled ? styles.turboRow : ''].filter(Boolean).join(' ')}
                       onDragOver={(event) => handleDragOver(task.id, event)}
                       onDrop={(event) => handleDrop(task.id, event)}
                       onDragEnd={handleDragEnd}
@@ -515,7 +525,10 @@ export function TasksTab() {
                         </IconButton>
                         <IconButton aria-label="turbo" onClick={() => {
                           setTurboTask(task);
-                          setTurboValue(task.turboEnabled ? Number(task.turboStoryPoints) || 0 : task.storyPoints);
+                          const baseSp = task.turboEnabled && Number.isFinite(task.turboStoryPoints)
+                            ? Number(task.turboStoryPoints)
+                            : task.storyPoints;
+                          setTurboValue(Math.min(baseSp, task.storyPoints));
                         }}>
                           <BoltIcon color={task.turboEnabled ? 'warning' : 'disabled'} />
                         </IconButton>
@@ -560,25 +573,22 @@ export function TasksTab() {
             Story Points originais: {turboTask?.storyPoints ?? '-'}
           </Typography>
           <TextField
+            select
             label="Story Points turbo"
-            type="number"
             fullWidth
             value={turboValue}
-            onChange={(e) => setTurboValue(Number(e.target.value))}
-            InputProps={{ inputProps: { min: 0 } }}
-            helperText="Valor usado nos cálculos quando turbo estiver ligado"
+            onChange={(e) => {
+              const original = turboTask?.storyPoints ?? Number(e.target.value);
+              const next = Math.min(Number(e.target.value), original);
+              setTurboValue(next);
+            }}
+            helperText="Escolha um valor igual ou menor ao SP original para ativar o turbo"
             sx={{ mt: 1 }}
-          />
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={!!turboTask?.turboEnabled}
-                onChange={(e) => setTurboTask((prev) => (prev ? { ...prev, turboEnabled: e.target.checked } : prev))}
-              />
-            }
-            label="Ativar turbo para esta tarefa"
-            sx={{ mt: 1 }}
-          />
+          >
+            {turboOptions.map((sp) => (
+              <MenuItem key={sp} value={sp}>{sp}</MenuItem>
+            ))}
+          </TextField>
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setTurboTask(null)}>Cancelar</Button>
@@ -586,13 +596,15 @@ export function TasksTab() {
             variant="contained"
             onClick={() => {
               if (!turboTask) return;
-              const enabled = turboTask.turboEnabled ?? false;
+              const original = turboTask.storyPoints;
+              const sp = Math.min(Number(turboValue), original);
+              const enabled = sp < original;
               dispatch(
                 updateTask({
                   id: turboTask.id,
                   updates: {
                     turboEnabled: enabled,
-                    turboStoryPoints: Number(turboValue),
+                    turboStoryPoints: sp,
                   },
                 }),
               );

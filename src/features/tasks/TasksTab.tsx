@@ -203,6 +203,19 @@ export function TasksTab() {
     return ids;
   }, [calcErrors]);
 
+  const totalStoryPoints = useMemo(() => tasks.reduce((sum, t) => sum + (t.storyPoints || 0), 0), [tasks]);
+  const capacityStoryPoints = teamCapacity.totalStoryPoints;
+  const capacityRatio = capacityStoryPoints > 0 ? totalStoryPoints / capacityStoryPoints : Infinity;
+  const warnLimit = 1 + config.workloadWarningOver;
+  const errLimit = 1 + config.workloadErrorOver;
+  const capacitySeverity = capacityStoryPoints <= 0 && totalStoryPoints > 0
+    ? 'error'
+    : capacityRatio > errLimit
+      ? 'error'
+      : capacityRatio > warnLimit
+        ? 'warning'
+        : null;
+
   const overshootTasks = useMemo(() => tasks.filter((t) => isAfterSprint(t)), [tasks, sprint.endDate]);
 
   const getRowClass = (task: TaskItem, runningTotals: Map<string, number>) => {
@@ -279,6 +292,12 @@ export function TasksTab() {
           <Button variant="contained" onClick={handleAdd}>Adicionar Tarefa</Button>
         </div>
         {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
+        {capacitySeverity && (
+          <Alert severity={capacitySeverity === 'error' ? 'error' : 'warning'} sx={{ mt: 1 }}>
+            Story Points planejados ({totalStoryPoints}) excedem a capacidade da sprint ({capacityStoryPoints}).
+            Limites: aviso até {(warnLimit - 1) * 100}% e erro acima de {(errLimit - 1) * 100}% sobre a capacidade.
+          </Alert>
+        )}
         {overshootTasks.length + overshootFromErrors.size > 0 && (
           <Alert severity="warning" sx={{ mt: 1 }}>
             Tarefas fora do fim da sprint: {

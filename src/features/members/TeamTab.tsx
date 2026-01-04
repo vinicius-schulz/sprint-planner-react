@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Alert,
   Button,
@@ -28,6 +28,15 @@ import styles from './TeamTab.module.css';
 
 const SENIORITIES: Member['seniority'][] = ['Sênior', 'Pleno', 'Júnior'];
 const MATURITIES: Member['maturity'][] = ['Plena', 'Mediana', 'Inicial'];
+const BASE_ROLE_TYPES = [
+  'Desenvolvedor',
+  'Tester',
+  'Product Owner',
+  'Scrum Master',
+  'UX/UI Designer',
+  'Analista de Negócios',
+  'Arquiteto(a)',
+];
 
 export function TeamTab() {
   const dispatch = useAppDispatch();
@@ -52,6 +61,13 @@ export function TeamTab() {
   const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingOriginalName, setEditingOriginalName] = useState<string>('');
+
+  const roleOptions = useMemo(() => {
+    const set = new Set(BASE_ROLE_TYPES);
+    members.forEach((m) => set.add(m.roleType));
+    if (roleType) set.add(roleType);
+    return Array.from(set);
+  }, [members, roleType]);
 
   const createBlankEvent = (): MemberEvent => ({
     id: crypto.randomUUID(),
@@ -191,11 +207,20 @@ export function TeamTab() {
         <Typography variant="h6" gutterBottom>Time</Typography>
         <div className={styles.form}>
           <TextField label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
-          <TextField label="Tipo" value={roleType} onChange={(e) => setRoleType(e.target.value)} />
+          <TextField
+            select
+            label="Papel"
+            value={roleType}
+            onChange={(e) => setRoleType(e.target.value)}
+          >
+            {roleOptions.map((r) => (
+              <MenuItem key={r} value={r}>{r}</MenuItem>
+            ))}
+          </TextField>
           <TextField select label="Senioridade" value={seniority} onChange={(e) => setSeniority(e.target.value as Member['seniority'])}>
             {SENIORITIES.map((s) => <MenuItem key={s} value={s}>{s}</MenuItem>)}
           </TextField>
-          <TextField select label="Maturidade" value={maturity} onChange={(e) => setMaturity(e.target.value as Member['maturity'])}>
+          <TextField select label="Maturidade no Projeto" value={maturity} onChange={(e) => setMaturity(e.target.value as Member['maturity'])}>
             {MATURITIES.map((m) => <MenuItem key={m} value={m}>{m}</MenuItem>)}
           </TextField>
           <FormControlLabel

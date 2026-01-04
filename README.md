@@ -29,7 +29,7 @@ Aplicação React + Vite com Redux Toolkit e MUI para planejar capacidade de spr
   "events": [{ "id": "e1", "type": "Planning", "date": "2025-01-02", "minutes": 120, "recurringDaily": false }],
   "members": [{ "id": "m1", "name": "Ana", "roleType": "Desenvolvedor", "seniority": "Pleno", "maturity": "Mediana", "availabilityPercent": 100 }],
   "tasks": [{ "id": "T1", "name": "Login", "assigneeMemberName": "Ana", "storyPoints": 5, "dependencies": [] }],
-  "globalConfig": { "dailyWorkHours": 8, "seniorityFactors": { "Sênior": 1, "Pleno": 0.8, "Júnior": 0.6 }, "maturityFactors": { "Plena": 1, "Mediana": 0.8, "Inicial": 0.6 }, "storyPointsPerHour": 0.25, "countedMemberTypes": ["Desenvolvedor", "Tester"] }
+  "globalConfig": { "dailyWorkHours": 8, "seniorityFactors": { "Sênior": 1, "Pleno": 0.8, "Júnior": 0.6 }, "maturityFactors": { "Plena": 1, "Mediana": 0.8, "Inicial": 0.6 }, "storyPointsPerHour": 0.33333333, "countedMemberTypes": ["Desenvolvedor"] }
 }
 ```
 

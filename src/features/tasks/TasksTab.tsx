@@ -171,6 +171,15 @@ export function TasksTab() {
   const handleOpenInfo = (task: TaskItem) => setInfoTask(task);
   const handleCloseInfo = () => setInfoTask(null);
 
+  const countedMemberNames = useMemo(() => {
+    const countedTypes = new Set(config.countedMemberTypes ?? DEFAULT_CONFIG.countedMemberTypes);
+    const names = new Set<string>();
+    members.forEach((m) => {
+      if (countedTypes.has(m.roleType)) names.add(m.name);
+    });
+    return names;
+  }, [members, config.countedMemberTypes]);
+
   const effectiveStoryPoints = (task: TaskItem): number => {
     if (task.turboEnabled && Number.isFinite(task.turboStoryPoints)) {
       return Math.max(0, Number(task.turboStoryPoints));
@@ -180,27 +189,32 @@ export function TasksTab() {
 
   const capacityByMember = useMemo(() => {
     const map = new Map<string, number>();
-    teamCapacity.members.forEach((mc) => map.set(mc.member.name, mc.storyPoints));
+    teamCapacity.members
+      .filter((mc) => countedMemberNames.has(mc.member.name))
+      .forEach((mc) => map.set(mc.member.name, mc.storyPoints));
     return map;
-  }, [teamCapacity]);
+  }, [teamCapacity, countedMemberNames]);
 
   const memberLoad = useMemo(() => {
     const usage = new Map<string, number>();
     tasks.forEach((t) => {
       if (!t.assigneeMemberName) return;
+      if (!countedMemberNames.has(t.assigneeMemberName)) return;
       usage.set(t.assigneeMemberName, (usage.get(t.assigneeMemberName) ?? 0) + effectiveStoryPoints(t));
     });
 
-    const list = teamCapacity.members.map((mc) => {
-      const taken = usage.get(mc.member.name) ?? 0;
-      const remaining = Math.max(0, mc.storyPoints - taken);
-      return {
-        name: mc.member.name,
-        capacitySp: mc.storyPoints,
-        takenSp: taken,
-        remainingSp: remaining,
-      };
-    });
+    const list = teamCapacity.members
+      .filter((mc) => countedMemberNames.has(mc.member.name))
+      .map((mc) => {
+        const taken = usage.get(mc.member.name) ?? 0;
+        const remaining = Math.max(0, mc.storyPoints - taken);
+        return {
+          name: mc.member.name,
+          capacitySp: mc.storyPoints,
+          takenSp: taken,
+          remainingSp: remaining,
+        };
+      });
 
     return list.sort((a, b) => b.remainingSp - a.remainingSp);
   }, [tasks, teamCapacity]);

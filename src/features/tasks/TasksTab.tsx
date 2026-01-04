@@ -317,13 +317,20 @@ export function TasksTab() {
             <Typography variant="subtitle2" gutterBottom>Distribuição por membro (SP)</Typography>
             <div className={styles.capacityChips}>
               {memberLoad.map((m) => (
+                (() => {
+                  let color: 'default' | 'success' | 'error' = 'default';
+                  if (m.takenSp > m.capacitySp) color = 'error';
+                  else if (m.remainingSp > 0) color = 'success';
+                  return (
                 <Chip
                   key={m.name}
                   label={`${m.name}: ${m.takenSp}/${m.capacitySp} SP (livre ${m.remainingSp})`}
-                  color={m.remainingSp > 0 ? 'success' : 'default'}
-                  variant={m.remainingSp > 0 ? 'filled' : 'outlined'}
+                    color={color === 'default' ? 'default' : color}
+                    variant={color === 'default' ? 'outlined' : 'filled'}
                   size="small"
-                />
+                  />
+                  );
+                })()
               ))}
             </div>
           </div>

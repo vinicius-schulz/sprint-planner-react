@@ -1,37 +1,65 @@
-import { useState } from 'react';
-import { Box, Button, Container, Stack, Tab, Tabs, Typography } from '@mui/material';
+import { useMemo, useState } from 'react';
+import {
+  AppBar,
+  Box,
+  Button,
+  Container,
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  Stack,
+  Step,
+  StepButton,
+  Stepper,
+  Toolbar,
+  Typography,
+} from '@mui/material';
 import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import './App.css';
-import { TabPanel } from './components/TabPanel';
 import { SprintTab } from './features/sprint/SprintTab';
 import { EventsTab } from './features/events/EventsTab';
 import { TeamTab } from './features/members/TeamTab';
 import { TasksTab } from './features/tasks/TasksTab';
-import { ConfigTab } from './features/config/ConfigTab';
-import { ImportExportTab } from './features/importExport/ImportExportTab';
 import { SummaryBoard } from './components/SummaryBoard';
 import { GanttTimelineFrappe } from './components/GanttTimelineFrappe';
 import { NewSchedulePanel } from './components/NewSchedulePanel';
 import { ReportExportButton } from './components/ReportExport';
+import { ConfigTab } from './features/config/ConfigTab';
+import { ImportExportTab } from './features/importExport/ImportExportTab';
 
 function App() {
-  const [tab, setTab] = useState(0);
+  const [activeStep, setActiveStep] = useState(0);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+
+  const steps = useMemo(
+    () => [
+      { label: 'Sprint', element: <SprintTab /> },
+      { label: 'Eventos', element: <EventsTab /> },
+      { label: 'Time', element: <TeamTab /> },
+      { label: 'Tarefas', element: <TasksTab /> },
+    ],
+    [],
+  );
+
+  const goToStep = (index: number) => {
+    setActiveStep(Math.max(0, Math.min(index, steps.length - 1)));
+  };
 
   return (
-    <Container className="appContainer" maxWidth="lg">
-      <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-        <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
-          Calculadora de Capacidade Scrum
-        </Typography>
-        <Stack direction="row" spacing={1}>
-          <ReportExportButton
-            renderTrigger={(onExport) => (
-              <Button variant="outlined" startIcon={<PictureAsPdfOutlinedIcon />} onClick={onExport}>
-                Exportar relatório
-              </Button>
-            )}
-          />
+    <>
+      <AppBar position="fixed" color="default" elevation={1}>
+        <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
+          <Typography variant="h6" sx={{ flexGrow: 1 }}>
+            Calculadora de Capacidade Scrum
+          </Typography>
+          <Button variant="text" color="inherit" onClick={() => setConfigOpen(true)}>
+            Configurações
+          </Button>
+          <Button variant="text" color="inherit" onClick={() => setImportOpen(true)}>
+            Exportar / Importar
+          </Button>
           <NewSchedulePanel
             renderTrigger={(open) => (
               <Button variant="outlined" startIcon={<SettingsOutlinedIcon />} onClick={open}>
@@ -39,47 +67,85 @@ function App() {
               </Button>
             )}
           />
-        </Stack>
+          <ReportExportButton
+            renderTrigger={(onExport) => (
+              <Button variant="contained" startIcon={<PictureAsPdfOutlinedIcon />} onClick={onExport}>
+                Exportar PDF
+              </Button>
+            )}
+          />
+        </Toolbar>
+      </AppBar>
+
+      <Toolbar />
+      <Container className="appContainer" maxWidth="lg" sx={{ pt: 2 }}>
+        <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+          <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
+            Planejamento de sprint
+          </Typography>
+          <Button variant="contained" onClick={() => goToStep(0)}>
+            Iniciar configuração
+          </Button>
+        </Box>
+        <Box sx={{ mb: 2 }}>
+          <SummaryBoard />
+        </Box>
+        {/*<GanttTimeline />*/}
+        <GanttTimelineFrappe />
+      <Box sx={{ mt: 2, mb: 2 }}>
+        <Stepper activeStep={activeStep} nonLinear alternativeLabel>
+          {steps.map((step, index) => (
+            <Step key={step.label} completed={activeStep > index}>
+              <StepButton color="inherit" onClick={() => goToStep(index)}>
+                {step.label}
+              </StepButton>
+            </Step>
+          ))}
+        </Stepper>
       </Box>
-      <Box sx={{ mb: 2 }}>
-        <SummaryBoard />
+      <Box sx={{ mt: 2 }}>
+        {steps[activeStep]?.element}
       </Box>
-      {/*<GanttTimeline />*/}
-      <GanttTimelineFrappe />
-      <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-        <Tabs
-          value={tab}
-          onChange={(_, newValue) => setTab(newValue)}
-          variant="scrollable"
-          scrollButtons="auto"
-        >
-          <Tab label="Sprint" />
-          <Tab label="Eventos" />
-          <Tab label="Time" />
-          <Tab label="Tarefas" />
-          <Tab label="Configurações" />
-          <Tab label="Export/Import" />
-        </Tabs>
-      </Box>
-      <TabPanel value={tab} index={0}>
-        <SprintTab />
-      </TabPanel>
-      <TabPanel value={tab} index={1}>
-        <EventsTab />
-      </TabPanel>
-      <TabPanel value={tab} index={2}>
-        <TeamTab />
-      </TabPanel>
-      <TabPanel value={tab} index={3}>
-        <TasksTab />
-      </TabPanel>
-      <TabPanel value={tab} index={4}>
-        <ConfigTab />
-      </TabPanel>
-      <TabPanel value={tab} index={5}>
-        <ImportExportTab />
-      </TabPanel>
-    </Container>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+          <Button variant="outlined" onClick={() => goToStep(activeStep - 1)} disabled={activeStep === 0}>
+            Anterior
+          </Button>
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant="contained"
+              onClick={() => goToStep(activeStep + 1)}
+              disabled={activeStep === steps.length - 1}
+            >
+              Próximo
+            </Button>
+          </Stack>
+        </Box>
+        <Box sx={{ mt: 4 }}>
+          <Stack direction="row" spacing={1}>
+            <Button variant="outlined" onClick={() => goToStep(0)}>
+              Reiniciar wizard
+            </Button>
+            <Button variant="text" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+              Voltar ao topo
+            </Button>
+          </Stack>
+        </Box>
+      </Container>
+
+      <Dialog open={configOpen} onClose={() => setConfigOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Configurações (global)</DialogTitle>
+        <DialogContent dividers>
+          <ConfigTab />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={importOpen} onClose={() => setImportOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle>Exportar / Importar</DialogTitle>
+        <DialogContent dividers>
+          <ImportExportTab />
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

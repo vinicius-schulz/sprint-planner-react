@@ -5,8 +5,13 @@ import {
   Card,
   CardContent,
   CardHeader,
+  Chip,
+  Collapse,
+  Divider,
+  FormControlLabel,
   IconButton,
   MenuItem,
+  Switch,
   Stack,
   TextField,
   Typography,
@@ -15,8 +20,9 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { addMember, removeMember } from './membersSlice';
 import { validateMember } from '../../domain/services/validators';
-import { computeMemberCapacity, selectWorkingHours } from '../../domain/services/capacityService';
-import type { Member } from '../../domain/types';
+import { computeMemberCapacity, selectWorkingCalendar, selectWorkingHours } from '../../domain/services/capacityService';
+import { computeDayHours } from '../../domain/services/workingCalendar';
+import type { Member, MemberEvent } from '../../domain/types';
 import styles from './TeamTab.module.css';
 
 const SENIORITIES: Member['seniority'][] = ['Sênior', 'Pleno', 'Júnior'];
@@ -26,16 +32,82 @@ export function TeamTab() {
   const dispatch = useAppDispatch();
   const members = useAppSelector((state) => state.members.items);
   const config = useAppSelector((state) => state.config.value);
+  const calendar = useAppSelector((state) => state.calendar);
+  const workingCalendar = useAppSelector(selectWorkingCalendar);
   const workingHours = useAppSelector(selectWorkingHours);
   const [name, setName] = useState('');
   const [roleType, setRoleType] = useState('Desenvolvedor');
   const [seniority, setSeniority] = useState<Member['seniority']>('Pleno');
   const [maturity, setMaturity] = useState<Member['maturity']>('Plena');
   const [availabilityPercent, setAvailabilityPercent] = useState(100);
+  const [useAdvancedAvailability, setUseAdvancedAvailability] = useState(false);
+  const [memberEvents, setMemberEvents] = useState<MemberEvent[]>([]);
+  const [eventDraft, setEventDraft] = useState<MemberEvent>({
+    id: crypto.randomUUID(),
+    minutes: 0,
+    description: '',
+  });
   const [error, setError] = useState<string | null>(null);
+  const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
+
+  const createBlankEvent = (): MemberEvent => ({
+    id: crypto.randomUUID(),
+    minutes: 0,
+    description: '',
+  });
+
+  const normalizedEvents = memberEvents.filter((ev) => Number.isFinite(ev.minutes) && ev.minutes > 0);
+
+  const derivedAvailabilityPercent = useAdvancedAvailability
+    ? (() => {
+        const baseMinutes = Math.max(0, Math.round(workingHours * 60)); // workingHours já desconta eventos da sprint
+        if (baseMinutes === 0) return 100;
+        const blocked = normalizedEvents.reduce((acc, ev) => acc + (ev.minutes ?? 0), 0);
+        const percent = ((baseMinutes - Math.min(blocked, baseMinutes)) / baseMinutes) * 100;
+        return Math.max(0, Math.min(100, Math.round(percent)));
+      })()
+    : availabilityPercent;
+
+  const handleToggleAdvanced = (checked: boolean) => {
+    setUseAdvancedAvailability(checked);
+    if (!checked) return;
+    if (memberEvents.length === 0) {
+      setMemberEvents([]);
+    }
+  };
+
+  const handleDraftChange = (field: keyof MemberEvent, value: string) => {
+    setEventDraft((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleSubmitDraft = () => {
+    if (!Number.isFinite(eventDraft.minutes) || eventDraft.minutes <= 0) {
+      setError('Informe a duração (minutos) maior que zero.');
+      return;
+    }
+    setError(null);
+    setMemberEvents((prev) => [...prev, { ...eventDraft, id: crypto.randomUUID() }]);
+    setEventDraft(createBlankEvent());
+  };
+
+  const handleRemoveEventChip = (id: string) => {
+    setMemberEvents((prev) => prev.filter((ev) => ev.id !== id));
+  };
+
+  const toggleExpandedEvents = (memberId: string) => {
+    setExpandedEvents((prev) => ({ ...prev, [memberId]: !prev[memberId] }));
+  };
 
   const handleAdd = () => {
-    const base = { name, roleType, seniority, maturity, availabilityPercent } as Omit<Member, 'id'>;
+    const finalAvailabilityPercent = useAdvancedAvailability ? derivedAvailabilityPercent : availabilityPercent;
+    const base: Omit<Member, 'id'> = {
+      name,
+      roleType,
+      seniority,
+      maturity,
+      availabilityPercent: finalAvailabilityPercent,
+      ...(useAdvancedAvailability ? { useAdvancedAvailability: true, availabilityEvents: normalizedEvents } : {}),
+    };
     const validation = validateMember(base);
     if (validation) {
       setError(validation);
@@ -50,6 +122,8 @@ export function TeamTab() {
     );
     setName('');
     setAvailabilityPercent(100);
+    setUseAdvancedAvailability(false);
+    setMemberEvents([]);
   };
 
   return (
@@ -65,12 +139,57 @@ export function TeamTab() {
           <TextField select label="Maturidade" value={maturity} onChange={(e) => setMaturity(e.target.value as Member['maturity'])}>
             {MATURITIES.map((m) => <MenuItem key={m} value={m}>{m}</MenuItem>)}
           </TextField>
-          <TextField
-            label="Disponibilidade %"
-            type="number"
-            value={availabilityPercent}
-            onChange={(e) => setAvailabilityPercent(Number(e.target.value))}
+          <FormControlLabel
+            control={<Switch checked={useAdvancedAvailability} onChange={(e) => handleToggleAdvanced(e.target.checked)} />}
+            label="Disponibilidade avançada"
           />
+          {!useAdvancedAvailability && (
+            <TextField
+              label="Disponibilidade %"
+              type="number"
+              value={availabilityPercent}
+              onChange={(e) => setAvailabilityPercent(Number(e.target.value))}
+            />
+          )}
+          {useAdvancedAvailability && (
+            <div className={styles.advancedSection}>
+              <div className={styles.advancedHeader}>
+                <div>
+                  <Typography variant="body2">Disponibilidade calculada</Typography>
+                  <Typography variant="h6">{derivedAvailabilityPercent}%</Typography>
+                </div>
+              </div>
+              <Divider />
+              <div className={styles.eventInputRow}>
+                <TextField
+                  label="Duração (minutos)"
+                  type="number"
+                  value={eventDraft.minutes}
+                  onChange={(e) => handleDraftChange('minutes', Number(e.target.value))}
+                />
+                <TextField
+                  label="Descrição"
+                  value={eventDraft.description ?? ''}
+                  onChange={(e) => handleDraftChange('description', e.target.value)}
+                />
+                <Button variant="outlined" onClick={handleSubmitDraft}>Adicionar</Button>
+              </div>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                {memberEvents.map((ev) => (
+                  <Chip
+                    key={ev.id}
+                    label={`${ev.minutes} min${ev.description ? ` • ${ev.description}` : ''}`}
+                    onDelete={() => handleRemoveEventChip(ev.id)}
+                  />
+                ))}
+                {memberEvents.length === 0 && (
+                  <Typography variant="body2" color="text.secondary">
+                    Nenhum evento adicionado. Preencha os campos e clique em Adicionar.
+                  </Typography>
+                )}
+              </Stack>
+            </div>
+          )}
           <Button variant="contained" onClick={handleAdd}>Adicionar Membro</Button>
         </div>
         {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
@@ -92,14 +211,37 @@ export function TeamTab() {
                 <CardContent>
                   <Stack direction="row" spacing={2} flexWrap="wrap">
                     <Stack spacing={0.5} minWidth={160}>
-                      <Typography variant="body2">Disponibilidade</Typography>
+                      <Typography variant="body2">
+                        {member.useAdvancedAvailability ? 'Disponibilidade (avançada)' : 'Disponibilidade'}
+                      </Typography>
                       <Typography variant="h6">{member.availabilityPercent}%</Typography>
+                      {member.useAdvancedAvailability && (
+                        <Typography variant="caption" color="text.secondary">
+                          {member.availabilityEvents?.length ?? 0} evento(s)
+                        </Typography>
+                      )}
                     </Stack>
                     <Stack spacing={0.5} minWidth={160}>
                       <Typography variant="body2">Capacidade (SP)</Typography>
                       <Typography variant="h6">{capacity.storyPoints.toFixed(2)}</Typography>
                     </Stack>
                   </Stack>
+                  {member.useAdvancedAvailability && (member.availabilityEvents?.length ?? 0) > 0 && (
+                    <div className={styles.cardEvents}>
+                      <Button size="small" onClick={() => toggleExpandedEvents(member.id)}>
+                        {expandedEvents[member.id] ? 'Ocultar eventos' : 'Ver eventos'}
+                      </Button>
+                      <Collapse in={expandedEvents[member.id]} timeout="auto" unmountOnExit>
+                        <Stack spacing={0.5} sx={{ mt: 1 }}>
+                          {member.availabilityEvents?.map((ev) => (
+                            <Typography key={ev.id} variant="body2" color="text.secondary">
+                              {ev.minutes} min{ev.description ? ` • ${ev.description}` : ''}
+                            </Typography>
+                          ))}
+                        </Stack>
+                      </Collapse>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             );

@@ -8,6 +8,12 @@ export type EventType =
   | 'Daily'
   | 'Outros';
 
+export interface MemberEvent {
+  id: string;
+  minutes: number; // duração do evento de indisponibilidade
+  description?: string;
+}
+
 export interface Sprint {
   title: string;
   startDate: DateString;
@@ -38,6 +44,8 @@ export interface Member {
   seniority: 'Sênior' | 'Pleno' | 'Júnior';
   maturity: 'Plena' | 'Mediana' | 'Inicial';
   availabilityPercent: number;
+  useAdvancedAvailability?: boolean;
+  availabilityEvents?: MemberEvent[];
 }
 
 export interface TaskItem {

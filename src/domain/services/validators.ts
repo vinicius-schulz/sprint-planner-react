@@ -1,4 +1,11 @@
-import type { CalendarState, EventItem, Member, SprintState, TaskItem } from '../types';
+import type { CalendarState, EventItem, Member, MemberEvent, SprintState, TaskItem } from '../types';
+
+const validateMemberEvent = (event: MemberEvent): string | null => {
+  if (!Number.isFinite(event.minutes) || event.minutes <= 0) {
+    return 'Duração do evento deve ser maior que zero (minutos).';
+  }
+  return null;
+};
 
 export const validateSprint = (sprint: SprintState): string | null => {
   if (!sprint.startDate || !sprint.endDate) return 'Datas de início e fim são obrigatórias.';
@@ -23,6 +30,14 @@ export const validateEvent = (event: Omit<EventItem, 'id'>): string | null => {
 export const validateMember = (member: Omit<Member, 'id'>): string | null => {
   if (!member.name) return 'Nome do membro é obrigatório.';
   if (!member.roleType) return 'Tipo do membro é obrigatório.';
+  if (member.useAdvancedAvailability) {
+    const events = member.availabilityEvents ?? [];
+    if (!events.length) return 'Adicione pelo menos um evento de disponibilidade ou desative o modo avançado.';
+    for (const ev of events) {
+      const err = validateMemberEvent(ev);
+      if (err) return err;
+    }
+  }
   if (!Number.isFinite(member.availabilityPercent) || member.availabilityPercent < 0 || member.availabilityPercent > 100) {
     return 'Disponibilidade deve estar entre 0 e 100.';
   }

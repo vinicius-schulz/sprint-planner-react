@@ -336,7 +336,7 @@ export const computeTaskSchedules = (
     let currentDay = earliestPointer.dayIndex;
     let startStamp: { dayIndex: number; minuteOffset: number } | null = null;
     let endStamp: { dayIndex: number; minuteOffset: number } | null = null;
-    const assigneeKey = task.assigneeMemberName || 'UNASSIGNED';
+    const assigneeKey = task.assigneeMemberName || `UNASSIGNED-${task.id}`; // unassigned tasks shouldn't chain each other
 
     while (remaining > 0 && currentDay < workingDaySchedules.length) {
       const day = workingDaySchedules[currentDay];

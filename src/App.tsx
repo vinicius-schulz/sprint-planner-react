@@ -11,6 +11,7 @@ import { ImportExportTab } from './features/importExport/ImportExportTab';
 import { SummaryBoard } from './components/SummaryBoard';
 import { GanttTimelineFrappe } from './components/GanttTimelineFrappe';
 import { NewSchedulePanel } from './components/NewSchedulePanel';
+import { ReportExportButton } from './components/ReportExport';
 
 function App() {
   const [tab, setTab] = useState(0);
@@ -23,6 +24,7 @@ function App() {
       <Box sx={{ mb: 2 }}>
         <SummaryBoard />
       </Box>
+      <ReportExportButton />
       <NewSchedulePanel />
       {/*<GanttTimeline />*/}
       <GanttTimelineFrappe />

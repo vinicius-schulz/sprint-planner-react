@@ -9,7 +9,6 @@ import { TasksTab } from './features/tasks/TasksTab';
 import { ConfigTab } from './features/config/ConfigTab';
 import { ImportExportTab } from './features/importExport/ImportExportTab';
 import { SummaryBoard } from './components/SummaryBoard';
-import { GanttTimeline } from './components/GanttTimeline';
 import { GanttTimelineFrappe } from './components/GanttTimelineFrappe';
 
 function App() {
@@ -23,8 +22,8 @@ function App() {
       <Box sx={{ mb: 2 }}>
         <SummaryBoard />
       </Box>
-      <GanttTimeline />
-      {/* <GanttTimelineFrappe /> */}
+      {/*<GanttTimeline />*/}
+      <GanttTimelineFrappe />
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
         <Tabs
           value={tab}

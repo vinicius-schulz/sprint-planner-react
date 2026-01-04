@@ -91,11 +91,15 @@ export function GanttTimelineFrappe() {
     const ganttData = parsed.map((task) => {
       const assignee = task.assigneeMemberName || 'Sem responsável';
       const colorClass = `assignee-${assigneeIndex.get(assignee) ?? 0}`;
+      const durationMs = task.end.getTime() - task.start.getTime();
+      const displayEnd = durationMs < 86_400_000
+        ? new Date(task.start.getTime() + 86_400_000)
+        : task.end;
       return {
         id: task.id,
         name: `${task.id} · ${task.name}`,
         start: task.start.toISOString().slice(0, 10),
-        end: task.end.toISOString().slice(0, 10),
+        end: displayEnd.toISOString().slice(0, 10),
         progress: 100,
         dependencies: (task.dependencies || []).join(',') || undefined,
         custom_class: colorClass,
@@ -177,8 +181,7 @@ export function GanttTimelineFrappe() {
     <Accordion defaultExpanded={false} sx={{ mt: 1 }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="h6">Cronograma (Frappe Gantt)</Typography>
-          <Typography variant="body2" color="text.secondary">Com linhas de dependência</Typography>
+          <Typography variant="h6">Cronograma - Gantt</Typography>
         </Stack>
       </AccordionSummary>
       <AccordionDetails>

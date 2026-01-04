@@ -22,12 +22,18 @@ export function SummaryBoard() {
   const workingHours = useAppSelector(selectWorkingHours);
   const calendar = useAppSelector(selectWorkingCalendar);
   const capacity = useAppSelector(selectTeamCapacity);
-  const tasksTotalSp = useAppSelector((state) =>
-    state.tasks.items.reduce((sum, t) => {
+  const tasksTotalSp = useAppSelector((state) => {
+    const countedTypes = new Set(state.config.value.countedMemberTypes);
+    const countedNames = new Set(
+      state.members.items.filter((m) => countedTypes.has(m.roleType)).map((m) => m.name),
+    );
+
+    return state.tasks.items.reduce((sum, t) => {
+      if (t.assigneeMemberName && !countedNames.has(t.assigneeMemberName)) return sum;
       const sp = t.turboEnabled && Number.isFinite(t.turboStoryPoints) ? Number(t.turboStoryPoints) : t.storyPoints;
       return sum + (sp || 0);
-    }, 0),
-  );
+    }, 0);
+  });
 
   return (
     <div className={styles.grid}>

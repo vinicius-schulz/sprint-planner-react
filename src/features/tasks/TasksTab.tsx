@@ -264,7 +264,12 @@ export function TasksTab() {
     return ids;
   }, [calcErrors]);
 
-  const totalStoryPoints = useMemo(() => tasks.reduce((sum, t) => sum + effectiveStoryPoints(t), 0), [tasks]);
+  const totalStoryPoints = useMemo(() => {
+    return tasks.reduce((sum, t) => {
+      if (t.assigneeMemberName && !countedMemberNames.has(t.assigneeMemberName)) return sum;
+      return sum + effectiveStoryPoints(t);
+    }, 0);
+  }, [tasks, countedMemberNames]);
   const capacityStoryPoints = teamCapacity.totalStoryPoints;
   const capacityRatio = capacityStoryPoints > 0 ? totalStoryPoints / capacityStoryPoints : Infinity;
   const warnLimit = 1 + config.workloadWarningOver;

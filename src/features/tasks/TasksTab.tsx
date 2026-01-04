@@ -13,6 +13,10 @@ import {
   DialogTitle,
   IconButton,
   MenuItem,
+  Tabs,
+  Tab,
+  Box,
+  Divider,
   Table,
   TableBody,
   TableCell,
@@ -20,12 +24,13 @@ import {
   TableRow,
   TextField,
   Typography,
+  List,
+  ListItem,
+  ListItemText,
 } from '@mui/material';
 import Autocomplete from '@mui/material/Autocomplete';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import BoltIcon from '@mui/icons-material/Bolt';
-import EditIcon from '@mui/icons-material/Edit';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { addTask, removeTask, replaceTasks, setComputedTasks, updateTask } from './tasksSlice';
@@ -34,7 +39,6 @@ import { computeTaskSchedules, selectTeamCapacity } from '../../domain/services/
 import type { TaskItem } from '../../domain/types';
 import type { SchedulingStrategy } from '../../domain/types';
 import { DEFAULT_CONFIG } from '../../domain/constants';
-import { TaskInfoDialog } from './TaskInfoDialog';
 import styles from './TasksTab.module.css';
 
 const generateTaskId = () => Math.random().toString(36).slice(2, 6).toUpperCase();
@@ -78,29 +82,17 @@ export function TasksTab() {
   const [calcErrors, setCalcErrors] = useState<string[]>([]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragOverId, setDragOverId] = useState<string | 'end' | null>(null);
-  const [infoTask, setInfoTask] = useState<TaskItem | null>(null);
-  const [turboTask, setTurboTask] = useState<TaskItem | null>(null);
-  const [turboValue, setTurboValue] = useState<number>(0);
-  const [editTask, setEditTask] = useState<TaskItem | null>(null);
-  const [editDraft, setEditDraft] = useState<{
+  const [manageTask, setManageTask] = useState<TaskItem | null>(null);
+  const [manageDraft, setManageDraft] = useState<{
     name: string;
     storyPoints: number;
     dueDate?: string;
     assigneeMemberName?: string;
     dependencies: string[];
   } | null>(null);
-
-  const turboOptions = useMemo(() => {
-    const original = turboTask?.storyPoints ?? Infinity;
-    const base = Array.from(new Set(storyPointScale.filter((sp) => sp <= original)));
-    if (turboTask && Number.isFinite(turboValue) && turboValue <= original && !base.includes(turboValue)) {
-      base.push(Number(turboValue));
-    }
-    if (turboTask && base.length === 0 && Number.isFinite(original)) {
-      base.push(original);
-    }
-    return base.sort((a, b) => a - b);
-  }, [storyPointScale, turboTask, turboValue]);
+  const [manageTurboValue, setManageTurboValue] = useState<number>(0);
+  const [manageTab, setManageTab] = useState<'resumo' | 'editar'>('resumo');
+  const manageTimeline = manageTask?.computedTimeline ?? [];
 
   useEffect(() => {
     setStoryPoints(storyPointScale[0] ?? 1);
@@ -183,18 +175,14 @@ export function TasksTab() {
     [tasks],
   );
 
-  const handleOpenInfo = (task: TaskItem) => setInfoTask(task);
-  const handleCloseInfo = () => setInfoTask(null);
-
-  const handleRemoveTask = (task: TaskItem) => {
-    const confirmed = window.confirm(`Remover tarefa ${task.id} - ${task.name}?`);
-    if (!confirmed) return;
-    dispatch(removeTask(task.id));
-  };
-
-  const handleOpenEdit = (task: TaskItem) => {
-    setEditTask(task);
-    setEditDraft({
+  const handleOpenManage = (task: TaskItem) => {
+    setManageTask(task);
+    setManageTab('resumo');
+    const baseTurbo = task.turboEnabled && Number.isFinite(task.turboStoryPoints)
+      ? Number(task.turboStoryPoints)
+      : task.storyPoints;
+    setManageTurboValue(baseTurbo);
+    setManageDraft({
       name: task.name,
       storyPoints: task.storyPoints,
       dueDate: task.dueDate,
@@ -203,25 +191,35 @@ export function TasksTab() {
     });
   };
 
-  const handleCloseEdit = () => {
-    setEditTask(null);
-    setEditDraft(null);
+  const handleCloseManage = () => {
+    setManageTask(null);
+    setManageDraft(null);
   };
 
-  const handleEditSave = () => {
-    if (!editTask || !editDraft) return;
-    const filteredDeps = editDraft.dependencies.filter((d, idx, arr) => d !== editTask.id && arr.indexOf(d) === idx);
+  const handleRemoveTask = (task: TaskItem) => {
+    const confirmed = window.confirm(`Remover tarefa ${task.id} - ${task.name}?`);
+    if (!confirmed) return;
+    dispatch(removeTask(task.id));
+  };
+
+  const handleManageSave = () => {
+    if (!manageTask || !manageDraft) return;
+    const filteredDeps = manageDraft.dependencies.filter((d, idx, arr) => d !== manageTask.id && arr.indexOf(d) === idx);
+    const turboSp = Math.min(Number(manageTurboValue) || 0, manageDraft.storyPoints);
+    const turboEnabled = turboSp < manageDraft.storyPoints;
     dispatch(updateTask({
-      id: editTask.id,
+      id: manageTask.id,
       updates: {
-        name: editDraft.name,
-        storyPoints: Number(editDraft.storyPoints),
-        dueDate: editDraft.dueDate || undefined,
-        assigneeMemberName: editDraft.assigneeMemberName || undefined,
+        name: manageDraft.name,
+        storyPoints: Number(manageDraft.storyPoints),
+        dueDate: manageDraft.dueDate || undefined,
+        assigneeMemberName: manageDraft.assigneeMemberName || undefined,
         dependencies: filteredDeps,
+        turboEnabled,
+        turboStoryPoints: turboEnabled ? turboSp : manageDraft.storyPoints,
       },
     }));
-    handleCloseEdit();
+    handleCloseManage();
   };
 
   const [strategy, setStrategy] = useState(config.schedulingStrategy ?? DEFAULT_CONFIG.schedulingStrategy ?? 'EDD');
@@ -400,18 +398,6 @@ export function TasksTab() {
               <MenuItem key={sp} value={sp}>{sp}</MenuItem>
             ))}
           </TextField>
-          <TextField
-            label="Prazo (AAAA-MM-DD)"
-            value={tasks.find((t) => t.id === infoTask?.id)?.dueDate ?? ''}
-            sx={{ display: 'none' }}
-            aria-hidden
-          />
-          <TextField
-            label="Dependências"
-            value=""
-            sx={{ display: 'none' }}
-            aria-hidden
-          />
           <Autocomplete
             multiple
             options={dependencyOptions}
@@ -632,20 +618,8 @@ export function TasksTab() {
                           <IconButton aria-label="remover" onClick={() => handleRemoveTask(task)} size="small">
                             <DeleteIcon fontSize="small" />
                           </IconButton>
-                          <IconButton aria-label="detalhes" onClick={() => handleOpenInfo(task)} size="small">
+                          <IconButton aria-label="detalhes e edição" onClick={() => handleOpenManage(task)} size="small">
                             <InfoOutlinedIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton aria-label="editar" onClick={() => handleOpenEdit(task)} size="small">
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                          <IconButton aria-label="turbo" onClick={() => {
-                            setTurboTask(task);
-                            const baseSp = task.turboEnabled && Number.isFinite(task.turboStoryPoints)
-                              ? Number(task.turboStoryPoints)
-                              : task.storyPoints;
-                            setTurboValue(Math.min(baseSp, task.storyPoints));
-                          }} size="small">
-                            <BoltIcon color={task.turboEnabled ? 'warning' : 'disabled'} fontSize="small" />
                           </IconButton>
                         </div>
                       </TableCell>
@@ -675,130 +649,152 @@ export function TasksTab() {
           </Table>
         </div>
       </CardContent>
-      <TaskInfoDialog
-        open={!!infoTask}
-        task={infoTask}
-        onClose={handleCloseInfo}
-        formatDateTime={formatDateTimeBr}
-        storyPointsPerHour={config.storyPointsPerHour}
-      />
-      <Dialog open={!!editTask} onClose={handleCloseEdit} maxWidth="sm" fullWidth>
-        <DialogTitle>Editar tarefa</DialogTitle>
-        <DialogContent dividers sx={{ display: 'grid', gap: 2 }}>
-          <TextField
-            label="Nome"
-            fullWidth
-            value={editDraft?.name ?? ''}
-            onChange={(e) => setEditDraft((prev) => prev ? { ...prev, name: e.target.value } : prev)}
-          />
-          <TextField
-            select
-            label="Story Points"
-            value={editDraft?.storyPoints ?? storyPointScale[0]}
-            onChange={(e) => setEditDraft((prev) => prev ? { ...prev, storyPoints: Number(e.target.value) } : prev)}
-          >
-            {storyPointScale.map((sp) => (
-              <MenuItem key={sp} value={sp}>{sp}</MenuItem>
-            ))}
-          </TextField>
-          <TextField
-            label="Prazo"
-            type="date"
-            value={editDraft?.dueDate ?? ''}
-            onChange={(e) => setEditDraft((prev) => prev ? { ...prev, dueDate: e.target.value || undefined } : prev)}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            select
-            label="Responsável"
-            value={editDraft?.assigneeMemberName ?? ''}
-            onChange={(e) => setEditDraft((prev) => prev ? { ...prev, assigneeMemberName: e.target.value || undefined } : prev)}
-          >
-            <MenuItem value="">-- Sem responsável --</MenuItem>
-            {members.map((m) => (
-              <MenuItem key={m.id} value={m.name}>{m.name}</MenuItem>
-            ))}
-          </TextField>
-          <Autocomplete
-            multiple
-            options={dependencyOptions.filter((o) => o.value !== editTask?.id)}
-            getOptionLabel={(o) => o.label}
-            value={dependencyOptions.filter((o) => (editDraft?.dependencies ?? []).includes(o.value))}
-            onChange={(_, newValue) => setEditDraft((prev) => prev ? { ...prev, dependencies: newValue.map((o) => o.value) } : prev)}
-            renderTags={(value, getTagProps) =>
-              value.map((option, index) => (
-                (() => {
-                  const { key, ...chipProps } = getTagProps({ index });
-                  return <Chip key={key} label={option.value} size="small" {...chipProps} />;
-                })()
-              ))
-            }
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                label="Dependências"
-                placeholder="IDs"
-              />
-            )}
-            filterSelectedOptions
-            disableCloseOnSelect
-            clearOnBlur
-            blurOnSelect={false}
-            ListboxProps={{ style: { maxHeight: 240 } }}
-          />
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseEdit}>Cancelar</Button>
-          <Button variant="contained" onClick={handleEditSave} disabled={!editDraft}>Atualizar</Button>
-        </DialogActions>
-      </Dialog>
-      <Dialog open={!!turboTask} onClose={() => setTurboTask(null)} maxWidth="xs" fullWidth>
-        <DialogTitle>Turbo da tarefa</DialogTitle>
+      <Dialog open={!!manageTask} onClose={handleCloseManage} maxWidth="md" fullWidth>
+        <DialogTitle>Detalhes e edição da tarefa</DialogTitle>
         <DialogContent dividers>
-          <Typography variant="body2" gutterBottom>
-            Story Points originais: {turboTask?.storyPoints ?? '-'}
-          </Typography>
-          <TextField
-            select
-            label="Story Points turbo"
-            fullWidth
-            value={turboValue}
-            onChange={(e) => {
-              const original = turboTask?.storyPoints ?? Number(e.target.value);
-              const next = Math.min(Number(e.target.value), original);
-              setTurboValue(next);
-            }}
-            helperText="Escolha um valor igual ou menor ao SP original para ativar o turbo"
-            sx={{ mt: 1 }}
-          >
-            {turboOptions.map((sp) => (
-              <MenuItem key={sp} value={sp}>{sp}</MenuItem>
-            ))}
-          </TextField>
+          <Tabs value={manageTab} onChange={(_, val) => setManageTab(val)} sx={{ mb: 2 }}>
+            <Tab label="Resumo" value="resumo" />
+            <Tab label="Editar" value="editar" />
+          </Tabs>
+          {manageTab === 'resumo' && (
+            <Box display="flex" flexDirection="column" gap={1}>
+              {!manageTask && <Typography variant="body2">Nenhuma tarefa selecionada.</Typography>}
+              {manageTask && (
+                <>
+                  <Typography variant="subtitle1" gutterBottom>{manageTask.name}</Typography>
+                  <Typography variant="body2">ID: {manageTask.id}</Typography>
+                  <Typography variant="body2">Responsável: {manageTask.assigneeMemberName || '—'}</Typography>
+                  <Typography variant="body2">Prazo: {manageTask.dueDate ?? '—'}</Typography>
+                  <Typography variant="body2">Início: {formatDateTimeBr(manageTask.computedStartDate)}</Typography>
+                  <Typography variant="body2" gutterBottom>Fim: {formatDateTimeBr(manageTask.computedEndDate)}</Typography>
+                  <Typography variant="body2">Story Points: {manageTask.storyPoints}</Typography>
+                  <Typography variant="body2">Turbo: {manageTask.turboEnabled ? manageTask.turboStoryPoints : 'Desativado'}</Typography>
+                  <Divider sx={{ my: 1 }} />
+                  <Typography variant="subtitle2" gutterBottom>Plano por dia</Typography>
+                  {!manageTimeline.length && (
+                    <Typography variant="body2" color="text.secondary">
+                      Calcule as datas para ver o cronograma detalhado.
+                    </Typography>
+                  )}
+                  {manageTimeline.length ? (
+                    <List dense>
+                      {manageTimeline.map((seg, idx) => (
+                        <div key={`${seg.date}-${seg.startTime}-${seg.endTime}-${idx}`}>
+                          <ListItem alignItems="flex-start">
+                            <ListItemText
+                              primary={`${formatDateTimeBr(`${seg.date} ${seg.startTime}`)} - ${seg.endTime} (${seg.minutes} min)`}
+                              secondary={
+                                seg.detail ? (
+                                  <div className={styles.infoDetailBlock}>
+                                    <Typography variant="body2">Períodos do dia: {seg.detail.periods.map((p) => `${p.start}-${p.end}`).join(', ')}</Typography>
+                                    <Typography variant="body2">
+                                      Capacidade do dia: {seg.detail.capacityMinutes} min (base {seg.detail.baseMinutes} - eventos {seg.detail.eventMinutes} - recorrentes {seg.detail.recurringMinutes})
+                                    </Typography>
+                                    <Typography variant="body2">
+                                      Disponibilidade/fatores: {seg.detail.availabilityPercent}% × sen {seg.detail.seniorityFactor} × mat {seg.detail.maturityFactor}
+                                    </Typography>
+                                    <Typography variant="body2">
+                                      Uso antes desta tarefa: {seg.detail.usedBeforeMinutes} min
+                                    </Typography>
+                                    <Typography variant="body2">
+                                      Eventos: {seg.detail.events.length ? seg.detail.events.map((e) => `${e.label} (${e.minutes}m)`).join(', ') : 'Nenhum'}
+                                    </Typography>
+                                  </div>
+                                ) : undefined
+                              }
+                            />
+                          </ListItem>
+                          {idx < manageTimeline.length - 1 && <Divider component="li" />}
+                        </div>
+                      ))}
+                    </List>
+                  ) : null}
+                </>
+              )}
+            </Box>
+          )}
+          {manageTab === 'editar' && (
+            <Box display="grid" gap={2}>
+              <TextField
+                label="Nome"
+                fullWidth
+                value={manageDraft?.name ?? ''}
+                onChange={(e) => setManageDraft((prev) => prev ? { ...prev, name: e.target.value } : prev)}
+              />
+              <TextField
+                select
+                label="Story Points"
+                value={manageDraft?.storyPoints ?? storyPointScale[0]}
+                onChange={(e) => setManageDraft((prev) => prev ? { ...prev, storyPoints: Number(e.target.value) } : prev)}
+              >
+                {storyPointScale.map((sp) => (
+                  <MenuItem key={sp} value={sp}>{sp}</MenuItem>
+                ))}
+              </TextField>
+              <TextField
+                select
+                label="Turbo (SP)"
+                helperText="Escolha valor menor que o SP original para ativar o turbo"
+                value={manageTurboValue}
+                onChange={(e) => setManageTurboValue(Math.min(Number(e.target.value), manageDraft?.storyPoints ?? Number(e.target.value)))}
+              >
+                {storyPointScale
+                  .filter((sp) => manageDraft ? sp <= manageDraft.storyPoints : true)
+                  .map((sp) => (
+                    <MenuItem key={sp} value={sp}>{sp}</MenuItem>
+                  ))}
+              </TextField>
+              <TextField
+                label="Prazo"
+                type="date"
+                value={manageDraft?.dueDate ?? ''}
+                onChange={(e) => setManageDraft((prev) => prev ? { ...prev, dueDate: e.target.value || undefined } : prev)}
+                InputLabelProps={{ shrink: true }}
+              />
+              <TextField
+                select
+                label="Responsável"
+                value={manageDraft?.assigneeMemberName ?? ''}
+                onChange={(e) => setManageDraft((prev) => prev ? { ...prev, assigneeMemberName: e.target.value || undefined } : prev)}
+              >
+                <MenuItem value="">-- Sem responsável --</MenuItem>
+                {members.map((m) => (
+                  <MenuItem key={m.id} value={m.name}>{m.name}</MenuItem>
+                ))}
+              </TextField>
+              <Autocomplete
+                multiple
+                options={dependencyOptions.filter((o) => o.value !== manageTask?.id)}
+                getOptionLabel={(o) => o.label}
+                value={dependencyOptions.filter((o) => (manageDraft?.dependencies ?? []).includes(o.value))}
+                onChange={(_, newValue) => setManageDraft((prev) => prev ? { ...prev, dependencies: newValue.map((o) => o.value) } : prev)}
+                renderTags={(value, getTagProps) =>
+                  value.map((option, index) => (
+                    (() => {
+                      const { key, ...chipProps } = getTagProps({ index });
+                      return <Chip key={key} label={option.value} size="small" {...chipProps} />;
+                    })()
+                  ))
+                }
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    label="Dependências"
+                    placeholder="IDs"
+                  />
+                )}
+                filterSelectedOptions
+                disableCloseOnSelect
+                clearOnBlur
+                blurOnSelect={false}
+                ListboxProps={{ style: { maxHeight: 240 } }}
+              />
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setTurboTask(null)}>Cancelar</Button>
-          <Button
-            variant="contained"
-            onClick={() => {
-              if (!turboTask) return;
-              const original = turboTask.storyPoints;
-              const sp = Math.min(Number(turboValue), original);
-              const enabled = sp < original;
-              dispatch(
-                updateTask({
-                  id: turboTask.id,
-                  updates: {
-                    turboEnabled: enabled,
-                    turboStoryPoints: sp,
-                  },
-                }),
-              );
-              setTurboTask(null);
-            }}
-          >
-            Salvar
-          </Button>
+          <Button onClick={handleCloseManage}>Cancelar</Button>
+          <Button variant="contained" onClick={handleManageSave} disabled={!manageDraft}>Atualizar</Button>
         </DialogActions>
       </Dialog>
     </Card>

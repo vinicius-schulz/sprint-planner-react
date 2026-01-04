@@ -1,4 +1,4 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState, useEffect, useCallback } from 'react';
 import type { DragEvent, ReactNode } from 'react';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import {
@@ -61,6 +61,8 @@ const formatDateTimeBr = (value?: string) => {
 
   return `${cleaned} 00:00`;
 };
+
+const taskManageEventName = 'task-manage-open';
 
 export function TasksTab() {
   const dispatch = useAppDispatch();
@@ -175,7 +177,7 @@ export function TasksTab() {
     [tasks],
   );
 
-  const handleOpenManage = (task: TaskItem) => {
+  const handleOpenManage = useCallback((task: TaskItem) => {
     setManageTask(task);
     setManageTab('resumo');
     const baseTurbo = task.turboEnabled && Number.isFinite(task.turboStoryPoints)
@@ -189,7 +191,7 @@ export function TasksTab() {
       assigneeMemberName: task.assigneeMemberName,
       dependencies: task.dependencies || [],
     });
-  };
+  }, []);
 
   const handleCloseManage = () => {
     setManageTask(null);
@@ -221,6 +223,19 @@ export function TasksTab() {
     }));
     handleCloseManage();
   };
+
+  useEffect(() => {
+    const onOpenManage = (event: Event) => {
+      const custom = event as CustomEvent<{ taskId?: string }>;
+      const taskId = custom.detail?.taskId;
+      if (!taskId) return;
+      const task = tasks.find((t) => t.id === taskId);
+      if (task) handleOpenManage(task);
+    };
+
+    window.addEventListener(taskManageEventName, onOpenManage as EventListener);
+    return () => window.removeEventListener(taskManageEventName, onOpenManage as EventListener);
+  }, [tasks, handleOpenManage]);
 
   const [strategy, setStrategy] = useState(config.schedulingStrategy ?? DEFAULT_CONFIG.schedulingStrategy ?? 'EDD');
 

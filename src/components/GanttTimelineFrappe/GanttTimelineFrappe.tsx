@@ -51,6 +51,8 @@ const formatISODate = (value: Date) => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
+const taskManageEventName = 'task-manage-open';
+
 export function GanttTimelineFrappe() {
   const { tasks, errors } = useAppSelector(selectTaskSchedules);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -142,6 +144,12 @@ export function GanttTimelineFrappe() {
         scroll_to: todayIso,
         language: 'pt-br',
         column_width: 90,
+        on_click: (task: { id?: string; meta?: ParsedTask }) => {
+          const taskId = task?.id || task?.meta?.id;
+          if (taskId) {
+            window.dispatchEvent(new CustomEvent(taskManageEventName, { detail: { taskId } }));
+          }
+        },
         custom_popup_html: (task: { meta: ParsedTask }) => {
           const deps = (task.meta.dependencies || []).join(', ') || 'Sem dependências';
           const owner = task.meta.assigneeMemberName || 'Sem responsável';

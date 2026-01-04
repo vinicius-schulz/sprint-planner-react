@@ -44,6 +44,13 @@ const formatShort = (value: Date) => {
   return `${dd}/${mm}/${yyyy}`;
 };
 
+const formatISODate = (value: Date) => {
+  const dd = String(value.getDate()).padStart(2, '0');
+  const mm = String(value.getMonth() + 1).padStart(2, '0');
+  const yyyy = value.getFullYear();
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 export function GanttTimelineFrappe() {
   const { tasks, errors } = useAppSelector(selectTaskSchedules);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -112,6 +119,8 @@ export function GanttTimelineFrappe() {
     return { ganttData, colorByAssignee, bounds: { minStart, maxEnd }, styleText };
   }, [parsed, palette]);
 
+  const todayIso = useMemo(() => formatISODate(new Date()), []);
+
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -126,6 +135,9 @@ export function GanttTimelineFrappe() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const gantt: any = new (Gantt as any)(container, ganttData, {
         view_mode: 'Day',
+        scroll_to: todayIso,
+        language: 'pt-br',
+        column_width: 90,
         custom_popup_html: (task: { meta: ParsedTask }) => {
           const deps = (task.meta.dependencies || []).join(', ') || 'Sem dependências';
           const owner = task.meta.assigneeMemberName || 'Sem responsável';
@@ -159,7 +171,7 @@ export function GanttTimelineFrappe() {
       container.innerHTML = '<div style="padding:8px; color:#b00020;">Erro ao renderizar gráfico.</div>';
       return () => { container.innerHTML = ''; };
     }
-  }, [ganttData, styleText]);
+  }, [ganttData, styleText, todayIso]);
 
   return (
     <Accordion defaultExpanded={false} sx={{ mt: 1 }}>

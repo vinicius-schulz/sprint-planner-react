@@ -153,9 +153,6 @@ export const computeTaskSchedules = (
   members: Member[],
   events: EventItem[],
 ): TaskScheduleResult => {
-  type SchedulingStrategy = 'EDD' | 'SPT' | 'BLOCKERS';
-  const schedulingStrategy: SchedulingStrategy = 'EDD';
-
   const errors: string[] = [];
   const sprintStart = toDate(sprint.startDate);
   const sprintEnd = toDate(sprint.endDate);
@@ -293,8 +290,20 @@ export const computeTaskSchedules = (
     return d ? d.getTime() : Number.MAX_SAFE_INTEGER;
   };
 
+  const hybridScore = (task: TaskItem) => {
+    const deps = dependentsCount.get(task.id) ?? 0;
+    const due = toDate(task.dueDate ?? sprint.endDate);
+    const daysToDue = due && sprintStart ? Math.max(0, (due.getTime() - sprintStart.getTime()) / (1000 * 60 * 60 * 24)) : Number.POSITIVE_INFINITY;
+    const dueScore = 1 / (1 + daysToDue); // nearer deadlines score higher
+    const duration = Math.max(1, durationMinutesForTask(task));
+    const durationScore = 1 / (1 + duration); // shorter tasks score higher
+    return deps + (2 * dueScore) + durationScore;
+  };
+
+  const strategy = config.schedulingStrategy ?? 'EDD';
+
   const compareTask = (a: TaskItem, b: TaskItem) => {
-    if (schedulingStrategy === 'EDD') {
+    if (strategy === 'EDD') {
       const da = dueRank(a.dueDate);
       const db = dueRank(b.dueDate);
       if (da !== db) return da - db;
@@ -304,11 +313,24 @@ export const computeTaskSchedules = (
       const depa = dependentsCount.get(a.id) ?? 0;
       const depb = dependentsCount.get(b.id) ?? 0;
       if (depa !== depb) return depb - depa;
-    } else if (schedulingStrategy === 'SPT') {
+    } else if (strategy === 'SPT') {
       const dura = durationMinutesForTask(a);
       const durb = durationMinutesForTask(b);
       if (dura !== durb) return dura - durb;
-    } else if (schedulingStrategy === 'BLOCKERS') {
+    } else if (strategy === 'BLOCKERS') {
+      const depa = dependentsCount.get(a.id) ?? 0;
+      const depb = dependentsCount.get(b.id) ?? 0;
+      if (depa !== depb) return depb - depa;
+    } else if (strategy === 'HYBRID') {
+      const scoreA = hybridScore(a);
+      const scoreB = hybridScore(b);
+      if (scoreA !== scoreB) return scoreB - scoreA;
+      const da = dueRank(a.dueDate);
+      const db = dueRank(b.dueDate);
+      if (da !== db) return da - db;
+      const dura = durationMinutesForTask(a);
+      const durb = durationMinutesForTask(b);
+      if (dura !== durb) return dura - durb;
       const depa = dependentsCount.get(a.id) ?? 0;
       const depb = dependentsCount.get(b.id) ?? 0;
       if (depa !== depb) return depb - depa;

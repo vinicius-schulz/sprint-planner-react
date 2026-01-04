@@ -25,11 +25,13 @@ import Autocomplete from '@mui/material/Autocomplete';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import BoltIcon from '@mui/icons-material/Bolt';
+import ScheduleIcon from '@mui/icons-material/Schedule';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { addTask, removeTask, replaceTasks, setComputedTasks, updateTask } from './tasksSlice';
 import { validateTask } from '../../domain/services/validators';
 import { computeTaskSchedules, selectTeamCapacity } from '../../domain/services/capacityService';
 import type { TaskItem } from '../../domain/types';
+import type { SchedulingStrategy } from '../../domain/types';
 import { DEFAULT_CONFIG } from '../../domain/constants';
 import { TaskInfoDialog } from './TaskInfoDialog';
 import styles from './TasksTab.module.css';
@@ -95,6 +97,10 @@ export function TasksTab() {
     setStoryPoints(storyPointScale[0] ?? 1);
   }, [storyPointScale]);
 
+  useEffect(() => {
+    setStrategy(config.schedulingStrategy ?? DEFAULT_CONFIG.schedulingStrategy ?? 'EDD');
+  }, [config.schedulingStrategy]);
+
   const handleAdd = () => {
     const dependencies = dependenciesIds.filter((d, idx, arr) => arr.indexOf(d) === idx);
     const base: Omit<TaskItem, 'computedEndDate' | 'computedStartDate'> = {
@@ -119,7 +125,7 @@ export function TasksTab() {
 
   const handleTaskUpdate = (
     id: string,
-    updates: Partial<Pick<TaskItem, 'name' | 'assigneeMemberName' | 'storyPoints' | 'dependencies'>>,
+    updates: Partial<Pick<TaskItem, 'name' | 'assigneeMemberName' | 'storyPoints' | 'dependencies' | 'dueDate'>>,
   ) => {
     dispatch(updateTask({ id, updates }));
   };
@@ -170,6 +176,8 @@ export function TasksTab() {
 
   const handleOpenInfo = (task: TaskItem) => setInfoTask(task);
   const handleCloseInfo = () => setInfoTask(null);
+
+  const [strategy, setStrategy] = useState(config.schedulingStrategy ?? DEFAULT_CONFIG.schedulingStrategy ?? 'EDD');
 
   const countedMemberNames = useMemo(() => {
     const countedTypes = new Set(config.countedMemberTypes ?? DEFAULT_CONFIG.countedMemberTypes);
@@ -234,13 +242,13 @@ export function TasksTab() {
   };
 
   useEffect(() => {
-    const result = computeTaskSchedules(tasks, sprint, calendar, config, members, events);
+    const result = computeTaskSchedules(tasks, sprint, calendar, { ...config, schedulingStrategy: strategy }, members, events);
     setCalcErrors(result.errors);
     if (result.errors.length > 0) return;
     if (!schedulesEqual(tasks, result.tasks)) {
       dispatch(setComputedTasks(result.tasks));
     }
-  }, [tasks, sprint, calendar, config, members, events, dispatch]);
+  }, [tasks, sprint, calendar, config, strategy, members, events, dispatch]);
 
   const isAfterSprint = (task: TaskItem) => {
     if (!sprint.endDate) return false;
@@ -311,6 +319,18 @@ export function TasksTab() {
       <CardContent>
         <Typography variant="h6" gutterBottom>Tarefas</Typography>
         <div className={styles.form}>
+          <TextField
+            select
+            label="Estratégia de agendamento"
+            value={strategy}
+            onChange={(e) => setStrategy(e.target.value as SchedulingStrategy)}
+            InputProps={{ startAdornment: <ScheduleIcon fontSize="small" /> }}
+          >
+            <MenuItem value="EDD">EDD (prazo mais cedo)</MenuItem>
+            <MenuItem value="SPT">SPT (tarefas mais curtas primeiro)</MenuItem>
+            <MenuItem value="BLOCKERS">Blockers (mais dependentes)</MenuItem>
+            <MenuItem value="HYBRID">Combinação (bloqueios + prazo + 1/duração)</MenuItem>
+          </TextField>
           <TextField label="Nome" value={name} onChange={(e) => setName(e.target.value)} />
           <TextField
             select
@@ -333,6 +353,12 @@ export function TasksTab() {
               <MenuItem key={sp} value={sp}>{sp}</MenuItem>
             ))}
           </TextField>
+          <TextField
+            label="Prazo (AAAA-MM-DD)"
+            value={tasks.find((t) => t.id === infoTask?.id)?.dueDate ?? ''}
+            sx={{ display: 'none' }}
+            aria-hidden
+          />
           <TextField
             label="Dependências"
             value=""
@@ -412,6 +438,7 @@ export function TasksTab() {
                 <TableCell>ID</TableCell>
                 <TableCell>Nome</TableCell>
                 <TableCell>SP</TableCell>
+                <TableCell>Prazo</TableCell>
                 <TableCell>Início</TableCell>
                 <TableCell>Fim</TableCell>
                 <TableCell>Dependências</TableCell>
@@ -423,7 +450,7 @@ export function TasksTab() {
             <TableBody>
               {tasks.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={10}>Nenhuma tarefa cadastrada.</TableCell>
+                  <TableCell colSpan={11}>Nenhuma tarefa cadastrada.</TableCell>
                 </TableRow>
               )}
               {(() => {
@@ -441,7 +468,7 @@ export function TasksTab() {
                         onDragOver={(event) => handleDragOver(task.id, event)}
                         onDrop={(event) => handleDrop(task.id, event)}
                       >
-                        <TableCell colSpan={10} className={styles.dropIndicatorCell}>
+                        <TableCell colSpan={11} className={styles.dropIndicatorCell}>
                           <div className={styles.dropIndicatorLine} />
                         </TableCell>
                       </TableRow>,
@@ -449,7 +476,7 @@ export function TasksTab() {
                   }
 
                   rows.push(
-                      <TableRow
+                    <TableRow
                       key={task.id}
                       hover
                       className={[rowClass, task.turboEnabled ? styles.turboRow : ''].filter(Boolean).join(' ')}
@@ -491,6 +518,17 @@ export function TasksTab() {
                             <MenuItem key={sp} value={sp}>{sp}</MenuItem>
                           ))}
                         </TextField>
+                      </TableCell>
+                      <TableCell>
+                        <TextField
+                          variant="standard"
+                          type="date"
+                          value={task.dueDate ?? ''}
+                          onChange={(e) => handleTaskUpdate(task.id, { dueDate: e.target.value || undefined })}
+                          fullWidth
+                          size="small"
+                          InputLabelProps={{ shrink: true }}
+                        />
                       </TableCell>
                       <TableCell>{formatDateTimeBr(task.computedStartDate)}</TableCell>
                       <TableCell>{formatDateTimeBr(task.computedEndDate)}</TableCell>
@@ -569,7 +607,7 @@ export function TasksTab() {
                       onDrop={(event) => handleDrop('end', event)}
                       onDragEnd={handleDragEnd}
                     >
-                      <TableCell colSpan={10} className={styles.dropIndicatorCell}>
+                      <TableCell colSpan={11} className={styles.dropIndicatorCell}>
                         <div className={styles.dropIndicatorLine} />
                       </TableCell>
                     </TableRow>,

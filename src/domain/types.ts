@@ -83,6 +83,8 @@ export interface TaskWorkDetail {
   events: { label: string; minutes: number }[];
 }
 
+export type SchedulingStrategy = 'EDD' | 'SPT' | 'BLOCKERS' | 'HYBRID';
+
 export interface GlobalConfig {
   dailyWorkHours: number;
   seniorityFactors: Record<string, number>;
@@ -93,6 +95,7 @@ export interface GlobalConfig {
   workloadWarningOver: number; // fraction over 1.0 (e.g., 0.1 => 10%)
   workloadErrorOver: number;   // fraction over 1.0 for red threshold
   defaultWorkingPeriods: WorkingPeriod[];
+  schedulingStrategy?: SchedulingStrategy;
 }
 
 export interface WorkingPeriod {

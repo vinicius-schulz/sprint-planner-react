@@ -27,15 +27,32 @@ const EVENT_TYPES: EventType[] = ['Planning', 'Refinamento', 'Review', 'Retrospe
 export function EventsTab() {
   const dispatch = useAppDispatch();
   const events = useAppSelector((state) => state.events.items);
+  const config = useAppSelector((state) => state.config.value);
   const [type, setType] = useState<EventType>('Planning');
   const [description, setDescription] = useState('');
   const [date, setDate] = useState('');
-  const [minutes, setMinutes] = useState(60);
+  const [durationValue, setDurationValue] = useState(60);
+  const [durationUnit, setDurationUnit] = useState<'minutes' | 'hours' | 'days'>('minutes');
   const [recurringDaily, setRecurringDaily] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const toMinutes = (value: number, unit: 'minutes' | 'hours' | 'days'): number => {
+    if (!Number.isFinite(value) || value <= 0) return 0;
+    if (unit === 'minutes') return Math.round(value);
+    if (unit === 'hours') return Math.round(value * 60);
+    return Math.round(value * config.dailyWorkHours * 60);
+  };
+
+  const formatDurationLabel = (minutes: number): string => {
+    const dayMinutes = Math.round(config.dailyWorkHours * 60);
+    if (minutes % dayMinutes === 0) return `${minutes / dayMinutes} dia(s)`;
+    if (minutes % 60 === 0) return `${minutes / 60} h`;
+    return `${minutes} min`;
+  };
+
   const handleAdd = () => {
-    const base = { type, description, date, minutes: Number(minutes), recurringDaily } as const;
+    const minutes = toMinutes(durationValue, durationUnit);
+    const base = { type, description, date, minutes, recurringDaily } as const;
     const validation = validateEvent(base);
     if (validation) {
       setError(validation);
@@ -50,7 +67,8 @@ export function EventsTab() {
     );
     setDescription('');
     setDate('');
-    setMinutes(60);
+    setDurationValue(60);
+    setDurationUnit('minutes');
     setRecurringDaily(false);
   };
 
@@ -77,11 +95,22 @@ export function EventsTab() {
             InputLabelProps={{ shrink: true }}
           />
           <TextField
-            label="Minutos"
+            label="Duração"
             type="number"
-            value={minutes}
-            onChange={(e) => setMinutes(Number(e.target.value))}
+            value={durationValue}
+            onChange={(e) => setDurationValue(Number(e.target.value))}
+            InputProps={{ inputProps: { min: 0 } }}
           />
+          <TextField
+            select
+            label="Unidade"
+            value={durationUnit}
+            onChange={(e) => setDurationUnit(e.target.value as typeof durationUnit)}
+          >
+            <MenuItem value="minutes">Minutos</MenuItem>
+            <MenuItem value="hours">Horas</MenuItem>
+            <MenuItem value="days">Dias</MenuItem>
+          </TextField>
           <FormControlLabel
             control={
               <Checkbox
@@ -106,7 +135,7 @@ export function EventsTab() {
             <ListItem key={ev.id} divider>
               <ListItemText
                 primary={`${ev.type} - ${ev.date}`}
-                secondary={`${ev.minutes} min${ev.recurringDaily ? ' (diário)' : ''}${ev.description ? ` • ${ev.description}` : ''}`}
+                secondary={`${formatDurationLabel(ev.minutes)}${ev.recurringDaily ? ' (diário)' : ''}${ev.description ? ` • ${ev.description}` : ''}`}
               />
               <ListItemSecondaryAction>
                 <IconButton edge="end" aria-label="remover" onClick={() => dispatch(removeEvent(ev.id))}>

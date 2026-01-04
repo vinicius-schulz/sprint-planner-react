@@ -46,6 +46,8 @@ export function TeamTab() {
     minutes: 0,
     description: '',
   });
+  const [durationValue, setDurationValue] = useState<number>(0);
+  const [durationUnit, setDurationUnit] = useState<'minutes' | 'hours' | 'days'>('minutes');
   const [error, setError] = useState<string | null>(null);
   const [expandedEvents, setExpandedEvents] = useState<Record<string, boolean>>({});
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -109,14 +111,31 @@ export function TeamTab() {
     setEventDraft((prev) => ({ ...prev, [field]: value }));
   };
 
+  const toMinutes = (value: number, unit: 'minutes' | 'hours' | 'days'): number => {
+    if (!Number.isFinite(value) || value <= 0) return 0;
+    if (unit === 'minutes') return Math.round(value);
+    if (unit === 'hours') return Math.round(value * 60);
+    return Math.round(value * config.dailyWorkHours * 60);
+  };
+
+  const formatDurationLabel = (minutes: number): string => {
+    const dayMinutes = Math.round(config.dailyWorkHours * 60);
+    if (minutes % dayMinutes === 0) return `${minutes / dayMinutes} dia(s)`;
+    if (minutes % 60 === 0) return `${minutes / 60} h`;
+    return `${minutes} min`;
+  };
+
   const handleSubmitDraft = () => {
-    if (!Number.isFinite(eventDraft.minutes) || eventDraft.minutes <= 0) {
-      setError('Informe a duração (minutos) maior que zero.');
+    const minutes = toMinutes(durationValue, durationUnit);
+    if (!Number.isFinite(minutes) || minutes <= 0) {
+      setError('Informe uma duração maior que zero.');
       return;
     }
     setError(null);
-    setMemberEvents((prev) => [...prev, { ...eventDraft, id: crypto.randomUUID() }]);
+    setMemberEvents((prev) => [...prev, { ...eventDraft, minutes, id: crypto.randomUUID() }]);
     setEventDraft(createBlankEvent());
+    setDurationValue(0);
+    setDurationUnit('minutes');
   };
 
   const handleRemoveEventChip = (id: string) => {
@@ -202,11 +221,22 @@ export function TeamTab() {
               <Divider />
               <div className={styles.eventInputRow}>
                 <TextField
-                  label="Duração (minutos)"
+                  label="Duração"
                   type="number"
-                  value={eventDraft.minutes}
-                  onChange={(e) => handleDraftChange('minutes', Number(e.target.value))}
+                  value={durationValue}
+                  onChange={(e) => setDurationValue(Number(e.target.value))}
+                  InputProps={{ inputProps: { min: 0 } }}
                 />
+                <TextField
+                  select
+                  label="Unidade"
+                  value={durationUnit}
+                  onChange={(e) => setDurationUnit(e.target.value as typeof durationUnit)}
+                >
+                  <MenuItem value="minutes">Minutos</MenuItem>
+                  <MenuItem value="hours">Horas</MenuItem>
+                  <MenuItem value="days">Dias</MenuItem>
+                </TextField>
                 <TextField
                   label="Descrição"
                   value={eventDraft.description ?? ''}
@@ -218,7 +248,7 @@ export function TeamTab() {
                 {memberEvents.map((ev) => (
                   <Chip
                     key={ev.id}
-                    label={`${ev.minutes} min${ev.description ? ` • ${ev.description}` : ''}`}
+                    label={`${formatDurationLabel(ev.minutes)}${ev.description ? ` • ${ev.description}` : ''}`}
                     onDelete={() => handleRemoveEventChip(ev.id)}
                   />
                 ))}
@@ -285,7 +315,7 @@ export function TeamTab() {
                         <Stack spacing={0.5} sx={{ mt: 1 }}>
                           {member.availabilityEvents?.map((ev) => (
                             <Typography key={ev.id} variant="body2" color="text.secondary">
-                              {ev.minutes} min{ev.description ? ` • ${ev.description}` : ''}
+                              {formatDurationLabel(ev.minutes)}{ev.description ? ` • ${ev.description}` : ''}
                             </Typography>
                           ))}
                         </Stack>

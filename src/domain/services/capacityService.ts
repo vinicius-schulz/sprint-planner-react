@@ -174,7 +174,7 @@ export const computeTaskSchedules = (
   const resolvePeriods = (day: DaySchedule): WorkingPeriod[] =>
     day.periods?.length ? day.periods : generateDefaultPeriods(config);
 
-  const workingDaySchedules = (calendar.daySchedules ?? [])
+  let workingDaySchedules = (calendar.daySchedules ?? [])
     .filter((d) => !d.isNonWorking && computeDayHours(resolvePeriods(d)) > 0)
     .filter(withinSprint)
     .map((d) => ({ ...d, periods: resolvePeriods(d) }))
@@ -338,7 +338,27 @@ export const computeTaskSchedules = (
     let endStamp: { dayIndex: number; minuteOffset: number } | null = null;
     const assigneeKey = task.assigneeMemberName || `UNASSIGNED-${task.id}`; // unassigned tasks shouldn't chain each other
 
-    while (remaining > 0 && currentDay < workingDaySchedules.length) {
+    const appendNextWorkingDay = () => {
+      if (!workingDaySchedules.length) return false;
+      const lastDate = toDate(workingDaySchedules[workingDaySchedules.length - 1].date);
+      if (!lastDate) return false;
+      const cursor = new Date(lastDate);
+      const limit = 365; // avoid infinite loop
+      for (let i = 0; i < limit; i += 1) {
+        cursor.setDate(cursor.getDate() + 1);
+        if (isWeekend(cursor)) continue;
+        const iso = toISODate(cursor);
+        workingDaySchedules = [...workingDaySchedules, { date: iso, isNonWorking: false, periods: generateDefaultPeriods(config) }];
+        return true;
+      }
+      return false;
+    };
+
+    while (remaining > 0) {
+      if (currentDay >= workingDaySchedules.length) {
+        const added = appendNextWorkingDay();
+        if (!added) break;
+      }
       const day = workingDaySchedules[currentDay];
       const capacity = dayCapacityForAssignee(day, assignee);
       let used = getUsage(assigneeKey, currentDay);
@@ -382,12 +402,7 @@ export const computeTaskSchedules = (
       if (remaining > 0) currentDay += 1;
     }
 
-    if (remaining > 0 || !startStamp || !endStamp) {
-      errors.push(
-        `Tarefa ${task.id} ultrapassa o fim da sprint (${formatDate(sprint.endDate)}). Ajuste ordem, dependências ou capacidade.`,
-      );
-      return;
-    }
+    if (remaining > 0 || !startStamp || !endStamp) return;
 
     const startDay = workingDaySchedules[startStamp.dayIndex];
     const endDay = workingDaySchedules[endStamp.dayIndex];

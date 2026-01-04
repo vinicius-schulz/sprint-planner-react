@@ -158,6 +158,27 @@ export function TasksTab() {
     return map;
   }, [teamCapacity]);
 
+  const memberLoad = useMemo(() => {
+    const usage = new Map<string, number>();
+    tasks.forEach((t) => {
+      if (!t.assigneeMemberName) return;
+      usage.set(t.assigneeMemberName, (usage.get(t.assigneeMemberName) ?? 0) + (t.storyPoints || 0));
+    });
+
+    const list = teamCapacity.members.map((mc) => {
+      const taken = usage.get(mc.member.name) ?? 0;
+      const remaining = Math.max(0, mc.storyPoints - taken);
+      return {
+        name: mc.member.name,
+        capacitySp: mc.storyPoints,
+        takenSp: taken,
+        remainingSp: remaining,
+      };
+    });
+
+    return list.sort((a, b) => b.remainingSp - a.remainingSp);
+  }, [tasks, teamCapacity]);
+
   const schedulesEqual = (current: TaskItem[], next: TaskItem[]) => {
     if (current.length !== next.length) return false;
     const byId = new Map(current.map((t) => [t.id, t]));
@@ -291,6 +312,22 @@ export function TasksTab() {
           />
           <Button variant="contained" onClick={handleAdd}>Adicionar Tarefa</Button>
         </div>
+        {memberLoad.length > 0 && (
+          <div className={styles.capacityPanel}>
+            <Typography variant="subtitle2" gutterBottom>Distribuição por membro (SP)</Typography>
+            <div className={styles.capacityChips}>
+              {memberLoad.map((m) => (
+                <Chip
+                  key={m.name}
+                  label={`${m.name}: ${m.takenSp}/${m.capacitySp} SP (livre ${m.remainingSp})`}
+                  color={m.remainingSp > 0 ? 'success' : 'default'}
+                  variant={m.remainingSp > 0 ? 'filled' : 'outlined'}
+                  size="small"
+                />
+              ))}
+            </div>
+          </div>
+        )}
         {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
         {capacitySeverity && (
           <Alert severity={capacitySeverity === 'error' ? 'error' : 'warning'} sx={{ mt: 1 }}>

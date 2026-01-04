@@ -9,6 +9,16 @@
   margin-top: 16px;
 }
 
+.capacityPanel {
+  margin-top: 12px;
+}
+
+.capacityChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .statusGreen {
   background-color: #ecfdf3;
 }

@@ -6,6 +6,7 @@ import type {
   DaySchedule,
   EventItem,
   GlobalConfig,
+  DateString,
   Member,
   RootPersistedState,
   SprintState,
@@ -152,6 +153,9 @@ export const computeTaskSchedules = (
   members: Member[],
   events: EventItem[],
 ): TaskScheduleResult => {
+  type SchedulingStrategy = 'EDD' | 'SPT' | 'BLOCKERS';
+  const schedulingStrategy: SchedulingStrategy = 'EDD';
+
   const errors: string[] = [];
   const sprintStart = toDate(sprint.startDate);
   const sprintEnd = toDate(sprint.endDate);
@@ -162,8 +166,6 @@ export const computeTaskSchedules = (
     ...t,
     dependencies: (t.dependencies ?? []).filter((depId) => depId !== t.id && idSet.has(depId)),
   }));
-  const originalIndex = new Map<string, number>();
-  cleanedTasks.forEach((t, idx) => originalIndex.set(t.id, idx));
 
   const withinSprint = (day: DaySchedule) => {
     const d = toDate(day.date);
@@ -277,12 +279,49 @@ export const computeTaskSchedules = (
     });
   });
 
-  const priority = (task: TaskItem) => originalIndex.get(task.id) ?? Number.MAX_SAFE_INTEGER;
+  const dependentsCount = new Map<string, number>();
+  cleanedTasks.forEach((t) => dependentsCount.set(t.id, 0));
+  cleanedTasks.forEach((t) => {
+    (t.dependencies || []).forEach((depId) => {
+      if (!taskMap.has(depId)) return;
+      dependentsCount.set(depId, (dependentsCount.get(depId) ?? 0) + 1);
+    });
+  });
+
+  const dueRank = (date?: DateString) => {
+    const d = toDate(date ?? sprint.endDate);
+    return d ? d.getTime() : Number.MAX_SAFE_INTEGER;
+  };
+
+  const compareTask = (a: TaskItem, b: TaskItem) => {
+    if (schedulingStrategy === 'EDD') {
+      const da = dueRank(a.dueDate);
+      const db = dueRank(b.dueDate);
+      if (da !== db) return da - db;
+      const dura = durationMinutesForTask(a);
+      const durb = durationMinutesForTask(b);
+      if (dura !== durb) return dura - durb;
+      const depa = dependentsCount.get(a.id) ?? 0;
+      const depb = dependentsCount.get(b.id) ?? 0;
+      if (depa !== depb) return depb - depa;
+    } else if (schedulingStrategy === 'SPT') {
+      const dura = durationMinutesForTask(a);
+      const durb = durationMinutesForTask(b);
+      if (dura !== durb) return dura - durb;
+    } else if (schedulingStrategy === 'BLOCKERS') {
+      const depa = dependentsCount.get(a.id) ?? 0;
+      const depb = dependentsCount.get(b.id) ?? 0;
+      if (depa !== depb) return depb - depa;
+    }
+    return a.id.localeCompare(b.id);
+  };
+
+  const compareId = (a: TaskItem, b: TaskItem) => compareTask(a, b);
   const queue: TaskItem[] = [];
   cleanedTasks.forEach((t) => {
     if ((indegree.get(t.id) ?? 0) === 0) queue.push(t);
   });
-  queue.sort((a, b) => priority(a) - priority(b));
+  queue.sort(compareId);
 
   const ordered: TaskItem[] = [];
   while (queue.length) {
@@ -294,7 +333,7 @@ export const computeTaskSchedules = (
       indegree.set(t.id, val);
       if (val === 0) {
         queue.push(t);
-        queue.sort((a, b) => priority(a) - priority(b));
+        queue.sort(compareId);
       }
     });
   }

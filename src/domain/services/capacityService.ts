@@ -162,6 +162,8 @@ export const computeTaskSchedules = (
     ...t,
     dependencies: (t.dependencies ?? []).filter((depId) => depId !== t.id && idSet.has(depId)),
   }));
+  const originalIndex = new Map<string, number>();
+  cleanedTasks.forEach((t, idx) => originalIndex.set(t.id, idx));
 
   const withinSprint = (day: DaySchedule) => {
     const d = toDate(day.date);
@@ -269,10 +271,12 @@ export const computeTaskSchedules = (
     });
   });
 
+  const priority = (task: TaskItem) => originalIndex.get(task.id) ?? Number.MAX_SAFE_INTEGER;
   const queue: TaskItem[] = [];
   cleanedTasks.forEach((t) => {
     if ((indegree.get(t.id) ?? 0) === 0) queue.push(t);
   });
+  queue.sort((a, b) => priority(a) - priority(b));
 
   const ordered: TaskItem[] = [];
   while (queue.length) {
@@ -282,7 +286,10 @@ export const computeTaskSchedules = (
       if (!t.dependencies?.includes(current.id)) return;
       const val = (indegree.get(t.id) ?? 0) - 1;
       indegree.set(t.id, val);
-      if (val === 0) queue.push(t);
+      if (val === 0) {
+        queue.push(t);
+        queue.sort((a, b) => priority(a) - priority(b));
+      }
     });
   }
 

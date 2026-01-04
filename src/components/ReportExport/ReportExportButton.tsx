@@ -1,9 +1,14 @@
 import { useMemo, useState } from 'react';
+import type { ReactNode } from 'react';
 import { Button, Snackbar, Alert } from '@mui/material';
 import { useAppSelector } from '../../app/hooks';
 import { selectWorkingCalendar } from '../../domain/services/capacityService';
 import type { TaskItem } from '../../domain/types';
 import styles from './ReportExportButton.module.css';
+
+type ReportExportButtonProps = {
+  renderTrigger?: (exportReport: () => void) => ReactNode;
+};
 
 const formatDate = (iso?: string) => {
   if (!iso) return '-';
@@ -29,7 +34,7 @@ const formatMinutesToHours = (minutes?: number) => {
   return `${hours.toFixed(2)} h`;
 };
 
-export function ReportExportButton() {
+export function ReportExportButton({ renderTrigger }: ReportExportButtonProps) {
   const sprint = useAppSelector((state) => state.sprint);
   const tasks = useAppSelector((state) => state.tasks.items);
   const members = useAppSelector((state) => state.members.items);
@@ -184,11 +189,17 @@ export function ReportExportButton() {
     }
   };
 
-  return (
-    <>
+  const trigger = renderTrigger
+    ? renderTrigger(handleExport)
+    : (
       <Button variant="outlined" onClick={handleExport} className={styles.button}>
         Exportar relatório (PDF)
       </Button>
+    );
+
+  return (
+    <>
+      {trigger}
       <Snackbar
         open={toast.open}
         autoHideDuration={3000}

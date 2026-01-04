@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import {
   Alert,
   Button,
@@ -22,7 +23,11 @@ import { replaceTasks, resetTasks } from '../../features/tasks/tasksSlice';
 import { resetConfig } from '../../features/config/configSlice';
 import styles from './NewSchedulePanel.module.css';
 
-export function NewSchedulePanel() {
+type NewSchedulePanelProps = {
+  renderTrigger?: (open: () => void) => ReactNode;
+};
+
+export function NewSchedulePanel({ renderTrigger }: NewSchedulePanelProps) {
   const dispatch = useAppDispatch();
   const tasks = useAppSelector((state) => state.tasks.items);
 
@@ -97,11 +102,17 @@ export function NewSchedulePanel() {
   const handleClearTasks = () => confirmAnd('Limpar tarefas?', () => { dispatch(resetTasks()); showToast('Tarefas limpas.'); });
   const handleClearConfig = () => confirmAnd('Resetar configurações?', () => { dispatch(resetConfig()); showToast('Configurações resetadas.'); });
 
-  return (
-    <>
+  const trigger = renderTrigger
+    ? renderTrigger(() => setOpen(true))
+    : (
       <Button variant="outlined" onClick={() => setOpen(true)} sx={{ mb: 2 }}>
         Dados & Cronograma
       </Button>
+    );
+
+  return (
+    <>
+      {trigger}
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Dados & Cronograma</DialogTitle>

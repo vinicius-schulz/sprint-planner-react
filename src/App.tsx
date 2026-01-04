@@ -1,5 +1,7 @@
 import { useState } from 'react';
-import { Box, Container, Tab, Tabs, Typography } from '@mui/material';
+import { Box, Button, Container, Stack, Tab, Tabs, Typography } from '@mui/material';
+import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import './App.css';
 import { TabPanel } from './components/TabPanel';
 import { SprintTab } from './features/sprint/SprintTab';
@@ -18,14 +20,30 @@ function App() {
 
   return (
     <Container className="appContainer" maxWidth="lg">
-      <Typography variant="h4" gutterBottom>
-        Calculadora de Capacidade Scrum
-      </Typography>
+      <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+        <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
+          Calculadora de Capacidade Scrum
+        </Typography>
+        <Stack direction="row" spacing={1}>
+          <ReportExportButton
+            renderTrigger={(onExport) => (
+              <Button variant="outlined" startIcon={<PictureAsPdfOutlinedIcon />} onClick={onExport}>
+                Exportar relatório
+              </Button>
+            )}
+          />
+          <NewSchedulePanel
+            renderTrigger={(open) => (
+              <Button variant="outlined" startIcon={<SettingsOutlinedIcon />} onClick={open}>
+                Dados & cronograma
+              </Button>
+            )}
+          />
+        </Stack>
+      </Box>
       <Box sx={{ mb: 2 }}>
         <SummaryBoard />
       </Box>
-      <ReportExportButton />
-      <NewSchedulePanel />
       {/*<GanttTimeline />*/}
       <GanttTimelineFrappe />
       <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>

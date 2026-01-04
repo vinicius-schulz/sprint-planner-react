@@ -25,6 +25,7 @@ import Autocomplete from '@mui/material/Autocomplete';
 import DeleteIcon from '@mui/icons-material/Delete';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import BoltIcon from '@mui/icons-material/Bolt';
+import EditIcon from '@mui/icons-material/Edit';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { addTask, removeTask, replaceTasks, setComputedTasks, updateTask } from './tasksSlice';
@@ -80,6 +81,14 @@ export function TasksTab() {
   const [infoTask, setInfoTask] = useState<TaskItem | null>(null);
   const [turboTask, setTurboTask] = useState<TaskItem | null>(null);
   const [turboValue, setTurboValue] = useState<number>(0);
+  const [editTask, setEditTask] = useState<TaskItem | null>(null);
+  const [editDraft, setEditDraft] = useState<{
+    name: string;
+    storyPoints: number;
+    dueDate?: string;
+    assigneeMemberName?: string;
+    dependencies: string[];
+  } | null>(null);
 
   const turboOptions = useMemo(() => {
     const original = turboTask?.storyPoints ?? Infinity;
@@ -176,6 +185,38 @@ export function TasksTab() {
 
   const handleOpenInfo = (task: TaskItem) => setInfoTask(task);
   const handleCloseInfo = () => setInfoTask(null);
+
+  const handleOpenEdit = (task: TaskItem) => {
+    setEditTask(task);
+    setEditDraft({
+      name: task.name,
+      storyPoints: task.storyPoints,
+      dueDate: task.dueDate,
+      assigneeMemberName: task.assigneeMemberName,
+      dependencies: task.dependencies || [],
+    });
+  };
+
+  const handleCloseEdit = () => {
+    setEditTask(null);
+    setEditDraft(null);
+  };
+
+  const handleEditSave = () => {
+    if (!editTask || !editDraft) return;
+    const filteredDeps = editDraft.dependencies.filter((d, idx, arr) => d !== editTask.id && arr.indexOf(d) === idx);
+    dispatch(updateTask({
+      id: editTask.id,
+      updates: {
+        name: editDraft.name,
+        storyPoints: Number(editDraft.storyPoints),
+        dueDate: editDraft.dueDate || undefined,
+        assigneeMemberName: editDraft.assigneeMemberName || undefined,
+        dependencies: filteredDeps,
+      },
+    }));
+    handleCloseEdit();
+  };
 
   const [strategy, setStrategy] = useState(config.schedulingStrategy ?? DEFAULT_CONFIG.schedulingStrategy ?? 'EDD');
 
@@ -373,7 +414,10 @@ export function TasksTab() {
             onChange={(_, newValue) => setDependenciesIds(newValue.map((o) => o.value))}
             renderTags={(value, getTagProps) =>
               value.map((option, index) => (
-                <Chip label={option.value} {...getTagProps({ index })} />
+                (() => {
+                  const { key, ...chipProps } = getTagProps({ index });
+                  return <Chip key={key} label={option.value} {...chipProps} />;
+                })()
               ))
             }
             renderInput={(params) => (
@@ -431,7 +475,7 @@ export function TasksTab() {
           <Alert key={err} severity="error" sx={{ mt: 1 }}>{err}</Alert>
         ))}
         <div className={styles.list}>
-          <Table size="small">
+          <Table size="small" className={styles.table}>
             <TableHead>
               <TableRow>
                 <TableCell width={40}></TableCell>
@@ -443,14 +487,13 @@ export function TasksTab() {
                 <TableCell>Fim</TableCell>
                 <TableCell>Dependências</TableCell>
                 <TableCell>Responsável</TableCell>
-                <TableCell width={40}></TableCell>
-                <TableCell width={40}></TableCell>
+                <TableCell width={140}>Ações</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {tasks.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={11}>Nenhuma tarefa cadastrada.</TableCell>
+                  <TableCell colSpan={10}>Nenhuma tarefa cadastrada.</TableCell>
                 </TableRow>
               )}
               {(() => {
@@ -468,7 +511,7 @@ export function TasksTab() {
                         onDragOver={(event) => handleDragOver(task.id, event)}
                         onDrop={(event) => handleDrop(task.id, event)}
                       >
-                        <TableCell colSpan={11} className={styles.dropIndicatorCell}>
+                        <TableCell colSpan={10} className={styles.dropIndicatorCell}>
                           <div className={styles.dropIndicatorLine} />
                         </TableCell>
                       </TableRow>,
@@ -541,7 +584,10 @@ export function TasksTab() {
                           onChange={(_, newValue) => handleDependenciesUpdate(task.id, newValue.map((o) => o.value))}
                           renderTags={(value, getTagProps) =>
                             value.map((option, index) => (
-                              <Chip label={option.value} size="small" {...getTagProps({ index })} />
+                              (() => {
+                                const { key, ...chipProps } = getTagProps({ index });
+                                return <Chip key={key} label={option.value} size="small" {...chipProps} />;
+                              })()
                             ))
                           }
                           renderInput={(params) => (
@@ -575,24 +621,27 @@ export function TasksTab() {
                           ))}
                         </TextField>
                       </TableCell>
-                      <TableCell align="right">
-                        <IconButton aria-label="remover" onClick={() => dispatch(removeTask(task.id))}>
-                          <DeleteIcon />
-                        </IconButton>
-                      </TableCell>
                       <TableCell>
-                        <IconButton aria-label="detalhes" onClick={() => handleOpenInfo(task)}>
-                          <InfoOutlinedIcon />
-                        </IconButton>
-                        <IconButton aria-label="turbo" onClick={() => {
-                          setTurboTask(task);
-                          const baseSp = task.turboEnabled && Number.isFinite(task.turboStoryPoints)
-                            ? Number(task.turboStoryPoints)
-                            : task.storyPoints;
-                          setTurboValue(Math.min(baseSp, task.storyPoints));
-                        }}>
-                          <BoltIcon color={task.turboEnabled ? 'warning' : 'disabled'} />
-                        </IconButton>
+                        <div className={styles.actionsGroup}>
+                          <IconButton aria-label="remover" onClick={() => dispatch(removeTask(task.id))} size="small">
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton aria-label="detalhes" onClick={() => handleOpenInfo(task)} size="small">
+                            <InfoOutlinedIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton aria-label="editar" onClick={() => handleOpenEdit(task)} size="small">
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                          <IconButton aria-label="turbo" onClick={() => {
+                            setTurboTask(task);
+                            const baseSp = task.turboEnabled && Number.isFinite(task.turboStoryPoints)
+                              ? Number(task.turboStoryPoints)
+                              : task.storyPoints;
+                            setTurboValue(Math.min(baseSp, task.storyPoints));
+                          }} size="small">
+                            <BoltIcon color={task.turboEnabled ? 'warning' : 'disabled'} fontSize="small" />
+                          </IconButton>
+                        </div>
                       </TableCell>
                     </TableRow>,
                   );
@@ -607,7 +656,7 @@ export function TasksTab() {
                       onDrop={(event) => handleDrop('end', event)}
                       onDragEnd={handleDragEnd}
                     >
-                      <TableCell colSpan={11} className={styles.dropIndicatorCell}>
+                      <TableCell colSpan={10} className={styles.dropIndicatorCell}>
                         <div className={styles.dropIndicatorLine} />
                       </TableCell>
                     </TableRow>,
@@ -627,6 +676,76 @@ export function TasksTab() {
         formatDateTime={formatDateTimeBr}
         storyPointsPerHour={config.storyPointsPerHour}
       />
+      <Dialog open={!!editTask} onClose={handleCloseEdit} maxWidth="sm" fullWidth>
+        <DialogTitle>Editar tarefa</DialogTitle>
+        <DialogContent dividers sx={{ display: 'grid', gap: 2 }}>
+          <TextField
+            label="Nome"
+            fullWidth
+            value={editDraft?.name ?? ''}
+            onChange={(e) => setEditDraft((prev) => prev ? { ...prev, name: e.target.value } : prev)}
+          />
+          <TextField
+            select
+            label="Story Points"
+            value={editDraft?.storyPoints ?? storyPointScale[0]}
+            onChange={(e) => setEditDraft((prev) => prev ? { ...prev, storyPoints: Number(e.target.value) } : prev)}
+          >
+            {storyPointScale.map((sp) => (
+              <MenuItem key={sp} value={sp}>{sp}</MenuItem>
+            ))}
+          </TextField>
+          <TextField
+            label="Prazo"
+            type="date"
+            value={editDraft?.dueDate ?? ''}
+            onChange={(e) => setEditDraft((prev) => prev ? { ...prev, dueDate: e.target.value || undefined } : prev)}
+            InputLabelProps={{ shrink: true }}
+          />
+          <TextField
+            select
+            label="Responsável"
+            value={editDraft?.assigneeMemberName ?? ''}
+            onChange={(e) => setEditDraft((prev) => prev ? { ...prev, assigneeMemberName: e.target.value || undefined } : prev)}
+          >
+            <MenuItem value="">-- Sem responsável --</MenuItem>
+            {members.map((m) => (
+              <MenuItem key={m.id} value={m.name}>{m.name}</MenuItem>
+            ))}
+          </TextField>
+          <Autocomplete
+            multiple
+            options={dependencyOptions.filter((o) => o.value !== editTask?.id)}
+            getOptionLabel={(o) => o.label}
+            value={dependencyOptions.filter((o) => (editDraft?.dependencies ?? []).includes(o.value))}
+            onChange={(_, newValue) => setEditDraft((prev) => prev ? { ...prev, dependencies: newValue.map((o) => o.value) } : prev)}
+            renderTags={(value, getTagProps) =>
+              value.map((option, index) => (
+                (() => {
+                  const { key, ...chipProps } = getTagProps({ index });
+                  return <Chip key={key} label={option.value} size="small" {...chipProps} />;
+                })()
+              ))
+            }
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                label="Dependências"
+                placeholder="IDs"
+              />
+            )}
+            filterSelectedOptions
+            disableCloseOnSelect
+            clearOnBlur
+            blurOnSelect={false}
+            ListboxProps={{ style: { maxHeight: 240 } }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseEdit}>Cancelar</Button>
+          <Button variant="contained" onClick={handleEditSave} disabled={!editDraft}>Atualizar</Button>
+        </DialogActions>
+      </Dialog>
       <Dialog open={!!turboTask} onClose={() => setTurboTask(null)} maxWidth="xs" fullWidth>
         <DialogTitle>Turbo da tarefa</DialogTitle>
         <DialogContent dividers>

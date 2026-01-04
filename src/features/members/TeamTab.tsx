@@ -84,12 +84,12 @@ export function TeamTab() {
 
   const derivedAvailabilityPercent = useAdvancedAvailability
     ? (() => {
-        const baseMinutes = Math.max(0, Math.round(workingHours * 60)); // workingHours já desconta eventos da sprint
-        if (baseMinutes === 0) return 100;
-        const blocked = normalizedEvents.reduce((acc, ev) => acc + (ev.minutes ?? 0), 0);
-        const percent = ((baseMinutes - Math.min(blocked, baseMinutes)) / baseMinutes) * 100;
-        return Math.max(0, Math.min(100, Math.round(percent)));
-      })()
+      const baseMinutes = Math.max(0, Math.round(workingHours * 60)); // workingHours já desconta eventos da sprint
+      if (baseMinutes === 0) return 100;
+      const blocked = normalizedEvents.reduce((acc, ev) => acc + (ev.minutes ?? 0), 0);
+      const percent = ((baseMinutes - Math.min(blocked, baseMinutes)) / baseMinutes) * 100;
+      return Math.max(0, Math.min(100, Math.round(percent)));
+    })()
     : availabilityPercent;
 
   const handleToggleAdvanced = (checked: boolean) => {

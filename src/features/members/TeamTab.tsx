@@ -22,8 +22,7 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { addMember, removeMember, updateMember } from './membersSlice';
 import { renameAssignee } from '../tasks/tasksSlice';
 import { validateMember } from '../../domain/services/validators';
-import { computeMemberCapacity, selectWorkingCalendar, selectWorkingHours } from '../../domain/services/capacityService';
-import { computeDayHours } from '../../domain/services/workingCalendar';
+import { computeMemberCapacity, selectWorkingHours } from '../../domain/services/capacityService';
 import type { Member, MemberEvent } from '../../domain/types';
 import styles from './TeamTab.module.css';
 
@@ -34,8 +33,6 @@ export function TeamTab() {
   const dispatch = useAppDispatch();
   const members = useAppSelector((state) => state.members.items);
   const config = useAppSelector((state) => state.config.value);
-  const calendar = useAppSelector((state) => state.calendar);
-  const workingCalendar = useAppSelector(selectWorkingCalendar);
   const workingHours = useAppSelector(selectWorkingHours);
   const [name, setName] = useState('');
   const [roleType, setRoleType] = useState('Desenvolvedor');
@@ -108,7 +105,7 @@ export function TeamTab() {
     setError(null);
   };
 
-  const handleDraftChange = (field: keyof MemberEvent, value: string) => {
+  const handleDraftChange = (field: keyof MemberEvent, value: string | number) => {
     setEventDraft((prev) => ({ ...prev, [field]: value }));
   };
 

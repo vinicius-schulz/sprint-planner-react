@@ -30,8 +30,7 @@ export function SummaryBoard() {
 
     return state.tasks.items.reduce((sum, t) => {
       if (t.assigneeMemberName && !countedNames.has(t.assigneeMemberName)) return sum;
-      const sp = t.turboEnabled && Number.isFinite(t.turboStoryPoints) ? Number(t.turboStoryPoints) : t.storyPoints;
-      return sum + (sp || 0);
+      return sum + (t.storyPoints || 0);
     }, 0);
   });
 

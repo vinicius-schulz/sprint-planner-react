@@ -39,6 +39,7 @@ import { computeTaskSchedules, selectTeamCapacity } from '../../domain/services/
 import type { TaskItem } from '../../domain/types';
 import type { SchedulingStrategy } from '../../domain/types';
 import { DEFAULT_CONFIG } from '../../domain/constants';
+import { GanttTimelineFrappe } from '../../components/GanttTimelineFrappe';
 import styles from './TasksTab.module.css';
 
 const generateTaskId = () => Math.random().toString(36).slice(2, 6).toUpperCase();
@@ -481,6 +482,9 @@ export function TasksTab() {
         {calcErrors.map((err) => (
           <Alert key={err} severity="error" sx={{ mt: 1 }}>{err}</Alert>
         ))}
+
+        <GanttTimelineFrappe inline title="Planejamento - Gantt" />
+
         <div className={styles.list}>
           <Table size="small" className={styles.table}>
             <TableHead>
@@ -698,6 +702,7 @@ export function TasksTab() {
                           <ListItem alignItems="flex-start">
                             <ListItemText
                               primary={`${formatDateTimeBr(`${seg.date} ${seg.startTime}`)} - ${seg.endTime} (${seg.minutes} min)`}
+                              secondaryTypographyProps={{ component: 'div' }}
                               secondary={
                                 seg.detail ? (
                                   <div className={styles.infoDetailBlock}>

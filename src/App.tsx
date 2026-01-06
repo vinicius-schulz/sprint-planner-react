@@ -26,6 +26,7 @@ import { ReportExportButton } from './components/ReportExport';
 import { ConfigTab } from './features/config/ConfigTab';
 import { ImportExportTab } from './features/importExport/ImportExportTab';
 import { FollowUpView } from './components/FollowUpView';
+import { ReviewTab } from './features/review/ReviewTab';
 import logo from './assets/logo.svg';
 
 function App() {
@@ -41,6 +42,10 @@ function App() {
       { label: 'Eventos', element: <EventsTab /> },
       { label: 'Time', element: <TeamTab /> },
       { label: 'Tarefas', element: <TasksTab /> },
+      {
+        label: 'Revisão',
+        element: <ReviewTab onSaved={() => setView('acomp')} />,
+      },
     ],
     [],
   );

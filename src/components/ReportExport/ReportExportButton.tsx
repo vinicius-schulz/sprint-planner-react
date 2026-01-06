@@ -131,7 +131,7 @@ export function ReportExportButton({ renderTrigger }: ReportExportButtonProps) {
     <h2>Capacidade x Carga</h2>
     <div class="grid">
       <div><strong>Story Points totais:</strong> ${capacitySummary.totalSP}</div>
-      <div><strong>Responsáveis com carga:</strong><br/>${[...capacitySummary.byAssignee.entries()].map(([k,v]) => `<span class="pill">${k}: ${v} SP</span>`).join('') || '—'}</div>
+      <div><strong>Responsáveis com carga:</strong><br/>${[...capacitySummary.byAssignee.entries()].map(([k, v]) => `<span class="pill">${k}: ${v} SP</span>`).join('') || '—'}</div>
     </div>
   </div>
 

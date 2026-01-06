@@ -136,12 +136,12 @@ export function GanttTimelineFrappe({ inline = false, title = 'Cronograma - Gant
       )),
       ...(uniformDoneColor
         ? [
-            [
-              `.task-done .bar { fill: ${doneColor}; stroke: ${doneColor}; opacity: 0.55; }`,
-              `.task-done .bar-progress { fill: ${doneColor}; stroke: ${doneColor}; opacity: 0.55; }`,
-              `.task-done .bar-label { fill: #fff; }`,
-            ].join('\n'),
-          ]
+          [
+            `.task-done .bar { fill: ${doneColor}; stroke: ${doneColor}; opacity: 0.55; }`,
+            `.task-done .bar-progress { fill: ${doneColor}; stroke: ${doneColor}; opacity: 0.55; }`,
+            `.task-done .bar-label { fill: #fff; }`,
+          ].join('\n'),
+        ]
         : []),
     ].join('\n');
 

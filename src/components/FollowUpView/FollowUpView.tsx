@@ -222,7 +222,7 @@ export function FollowUpView() {
         manageDraft={null}
         manageTurboValue={0}
         manageTab="resumo"
-        onTabChange={() => {}}
+        onTabChange={() => { }}
         onClose={handleCloseManage}
         formatDateTime={formatDateTimeBr}
         formatMinutesToClock={formatMinutesToClock}

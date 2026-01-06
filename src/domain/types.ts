@@ -33,7 +33,7 @@ export interface CalendarState {
   daySchedules: DaySchedule[];
 }
 
-export interface SprintState extends Sprint {}
+export interface SprintState extends Sprint { }
 
 export interface EventItem {
   id: string;

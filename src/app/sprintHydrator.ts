@@ -9,11 +9,11 @@ import type { RootPersistedState } from '../domain/types';
 import type { AppDispatch } from './store';
 
 export const hydrateStoreFromState = (dispatch: AppDispatch, state: RootPersistedState) => {
-  dispatch(updateSprint(state.sprint));
-  dispatch(replaceCalendar(state.calendar));
-  dispatch(replaceEvents(state.events.items));
-  dispatch(replaceMembers(state.members.items));
-  dispatch(replaceTasks(state.tasks.items));
-  dispatch(updateConfig(state.config.value));
-  dispatch(setPlanningLifecycleState(state.planningLifecycle));
+    dispatch(updateSprint(state.sprint));
+    dispatch(replaceCalendar(state.calendar));
+    dispatch(replaceEvents(state.events.items));
+    dispatch(replaceMembers(state.members.items));
+    dispatch(replaceTasks(state.tasks.items));
+    dispatch(updateConfig(state.config.value));
+    dispatch(setPlanningLifecycleState(state.planningLifecycle));
 };

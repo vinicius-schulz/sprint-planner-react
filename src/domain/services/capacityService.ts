@@ -88,8 +88,8 @@ export const computeWorkingHours = (
   if (!workingDays.length) return 0;
   const baseHours = calendar.daySchedules?.length
     ? calendar.daySchedules
-        .filter((d) => workingDays.includes(d.date))
-        .reduce((sum, d) => sum + computeDayHours(d.periods), 0)
+      .filter((d) => workingDays.includes(d.date))
+      .reduce((sum, d) => sum + computeDayHours(d.periods), 0)
     : workingDays.length * config.dailyWorkHours;
   const deduction = computeEventDeductionHours(events, workingDays);
   return Math.max(0, baseHours - deduction);

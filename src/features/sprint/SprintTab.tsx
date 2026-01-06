@@ -51,8 +51,8 @@ export function SprintTab() {
     dispatch(updateSprint(candidate));
     const generated = buildDaySchedules(candidate, config, calendar.daySchedules ?? []);
     dispatch(setDaySchedules(generated));
-  // calendar.daySchedules intentionally read inside to preserve edits without re-triggering endlessly
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // calendar.daySchedules intentionally read inside to preserve edits without re-triggering endlessly
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [startDate, endDate, title, config, dispatch]);
 
   const handleToggleNonWorking = (day: DaySchedule, checked: boolean) => {

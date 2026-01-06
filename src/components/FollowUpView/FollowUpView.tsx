@@ -64,6 +64,38 @@ const formatISODate = (value: Date) => {
   return `${yyyy}-${mm}-${dd}`;
 };
 
+const pad2 = (v: number) => String(v).padStart(2, '0');
+
+const formatISOLocalDateTime = (value: Date) => {
+  const yyyy = value.getFullYear();
+  const mm = pad2(value.getMonth() + 1);
+  const dd = pad2(value.getDate());
+  const hh = pad2(value.getHours());
+  const min = pad2(value.getMinutes());
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+};
+
+const toDateTimeLocalValue = (value?: string): string => {
+  if (!value) return '';
+  const cleaned = value.replace('Z', '').trim();
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(cleaned)) return cleaned;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return `${cleaned}T00:00`;
+  const isoSpace = cleaned.match(/^(\d{4}-\d{2}-\d{2})\s(\d{2}:\d{2})/);
+  if (isoSpace) return `${isoSpace[1]}T${isoSpace[2]}`;
+  const br = cleaned.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s(\d{2}:\d{2}))?/);
+  if (br) return `${br[3]}-${br[2]}-${br[1]}T${br[4] ?? '00:00'}`;
+  return '';
+};
+
+const toDateOnlyValue = (value?: string): string => {
+  if (!value) return '';
+  const local = toDateTimeLocalValue(value);
+  if (local) return local.slice(0, 10);
+  const cleaned = value.replace('Z', '').trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return cleaned;
+  return '';
+};
+
 export function FollowUpView() {
   const dispatch = useAppDispatch();
   const tasks = useAppSelector((state) => state.tasks.items);
@@ -74,7 +106,6 @@ export function FollowUpView() {
   const [assigneeFilter, setAssigneeFilter] = useState<string>('all');
 
   const [manageTask, setManageTask] = useState<TaskItem | null>(null);
-  const manageTimeline = manageTask?.computedTimeline ?? [];
 
   const filteredTasks = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -116,14 +147,32 @@ export function FollowUpView() {
   const handleStatusChange = (task: TaskItem, nextStatus: 'todo' | 'doing' | 'done') => {
     const updates: Partial<Pick<TaskItem, 'status' | 'completedAt'>> = { status: nextStatus };
     if (nextStatus === 'done' && !task.completedAt) {
-      updates.completedAt = todayIso;
+      updates.completedAt = formatISOLocalDateTime(new Date());
     }
     dispatch(updateTask({ id: task.id, updates }));
   };
 
-  const handleCompletedAtChange = (task: TaskItem, nextDate: string) => {
-    dispatch(updateTask({ id: task.id, updates: { completedAt: nextDate || undefined } }));
+  const handleCompletedAtChange = (task: TaskItem, nextDateTime: string) => {
+    dispatch(updateTask({ id: task.id, updates: { completedAt: nextDateTime || undefined } }));
   };
+
+  const handleCompletedAtDateOnlyChange = (task: TaskItem, nextDate: string) => {
+    if (!nextDate) {
+      dispatch(updateTask({ id: task.id, updates: { completedAt: undefined } }));
+      return;
+    }
+
+    const currentLocal = toDateTimeLocalValue(task.completedAt);
+    const timePart = currentLocal.match(/T(\d{2}:\d{2})$/)?.[1] ?? '00:00';
+    dispatch(updateTask({ id: task.id, updates: { completedAt: `${nextDate}T${timePart}` } }));
+  };
+
+  const manageTaskFromStore = useMemo(() => {
+    if (!manageTask) return null;
+    return tasks.find((t) => t.id === manageTask.id) ?? manageTask;
+  }, [tasks, manageTask]);
+
+  const manageTimelineFromStore = manageTaskFromStore?.computedTimeline ?? [];
 
   return (
     <div className={styles.wrapper}>
@@ -222,8 +271,8 @@ export function FollowUpView() {
                           type="date"
                           size="small"
                           variant="standard"
-                          value={task.completedAt ?? todayIso}
-                          onChange={(e) => handleCompletedAtChange(task, e.target.value)}
+                          value={toDateOnlyValue(task.completedAt) || todayIso}
+                          onChange={(e) => handleCompletedAtDateOnlyChange(task, e.target.value)}
                           InputLabelProps={{ shrink: true }}
                         />
                       ) : (
@@ -247,31 +296,72 @@ export function FollowUpView() {
       </Card>
 
       <Dialog open={!!manageTask} onClose={handleCloseManage} maxWidth="md" fullWidth>
-        <DialogTitle>Detalhes da tarefa (somente leitura)</DialogTitle>
+        <DialogTitle>Detalhes da tarefa</DialogTitle>
         <DialogContent dividers>
           <Box display="flex" flexDirection="column" gap={1}>
             {!manageTask && <Typography variant="body2">Nenhuma tarefa selecionada.</Typography>}
-            {manageTask && (
+            {manageTaskFromStore && (
               <>
-                <Typography variant="subtitle1" gutterBottom>{manageTask.name}</Typography>
-                <Typography variant="body2">ID: {manageTask.id}</Typography>
-                <Typography variant="body2">Responsável: {manageTask.assigneeMemberName || '—'}</Typography>
-                <Typography variant="body2">Prazo: {manageTask.dueDate ?? '—'}</Typography>
-                <Typography variant="body2">Início: {formatDateTimeBr(manageTask.computedStartDate)}</Typography>
-                <Typography variant="body2" gutterBottom>Fim: {formatDateTimeBr(manageTask.computedEndDate)}</Typography>
-                <Typography variant="body2">Story Points: {manageTask.storyPoints}</Typography>
-                <Typography variant="body2">Status: {statusOptions.find((o) => o.value === (manageTask.status ?? 'todo'))?.label ?? 'A Fazer'}</Typography>
-                <Typography variant="body2">Concluída em: {manageTask.completedAt ? formatDateTimeBr(manageTask.completedAt) : '—'}</Typography>
-                <Typography variant="body2">Turbo: {manageTask.turboEnabled ? manageTask.turboStoryPoints : 'Desativado'}</Typography>
+                <Typography variant="subtitle1" gutterBottom>{manageTaskFromStore.name}</Typography>
+                <Typography variant="body2">ID: {manageTaskFromStore.id}</Typography>
+                <Typography variant="body2">Responsável: {manageTaskFromStore.assigneeMemberName || '—'}</Typography>
+                <Typography variant="body2">Prazo: {manageTaskFromStore.dueDate ?? '—'}</Typography>
+                <Typography variant="body2">Início: {formatDateTimeBr(manageTaskFromStore.computedStartDate)}</Typography>
+                <Typography variant="body2" gutterBottom>Fim: {formatDateTimeBr(manageTaskFromStore.computedEndDate)}</Typography>
+                <Typography variant="body2">Story Points: {manageTaskFromStore.storyPoints}</Typography>
+
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 1 }}>
+                  <Box sx={{ minWidth: 220 }}>
+                    <TextField
+                      label="Status"
+                      select
+                      size="small"
+                      fullWidth
+                      value={(manageTaskFromStore.status ?? 'todo')}
+                      onChange={(e) => handleStatusChange(manageTaskFromStore, e.target.value as 'todo' | 'doing' | 'done')}
+                    >
+                      {statusOptions.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                      ))}
+                    </TextField>
+                  </Box>
+
+                  <Box sx={{ minWidth: 260 }}>
+                    {(manageTaskFromStore.status ?? 'todo') === 'done' ? (
+                      <TextField
+                        label="Concluída em"
+                        type="datetime-local"
+                        size="small"
+                        fullWidth
+                        value={
+                          toDateTimeLocalValue(manageTaskFromStore.completedAt) ||
+                          formatISOLocalDateTime(new Date())
+                        }
+                        onChange={(e) => handleCompletedAtChange(manageTaskFromStore, e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    ) : (
+                      <TextField
+                        label="Concluída em"
+                        size="small"
+                        fullWidth
+                        value="—"
+                        disabled
+                      />
+                    )}
+                  </Box>
+                </Stack>
+
+                <Typography variant="body2">Turbo: {manageTaskFromStore.turboEnabled ? manageTaskFromStore.turboStoryPoints : 'Desativado'}</Typography>
                 <Typography variant="subtitle2" sx={{ mt: 1 }}>Plano por dia</Typography>
-                {!manageTimeline.length && (
+                {!manageTimelineFromStore.length && (
                   <Typography variant="body2" color="text.secondary">
                     Calcule as datas no planejamento para ver o cronograma detalhado.
                   </Typography>
                 )}
-                {manageTimeline.length ? (
+                {manageTimelineFromStore.length ? (
                   <List dense>
-                    {manageTimeline.map((seg, idx) => (
+                    {manageTimelineFromStore.map((seg, idx) => (
                       <div key={`${seg.date}-${seg.startTime}-${seg.endTime}-${idx}`}>
                         <ListItem alignItems="flex-start">
                           <ListItemText
@@ -298,7 +388,7 @@ export function FollowUpView() {
                             }
                           />
                         </ListItem>
-                        {idx < manageTimeline.length - 1 && <Divider component="li" />}
+                        {idx < manageTimelineFromStore.length - 1 && <Divider component="li" />}
                       </div>
                     ))}
                   </List>

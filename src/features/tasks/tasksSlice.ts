@@ -38,11 +38,22 @@ const tasksSlice = createSlice({
       const idx = state.items.findIndex((task) => task.id === id);
       if (idx === -1) return;
       const current = state.items[idx];
+
+      const affectsScheduling =
+        Object.prototype.hasOwnProperty.call(updates, 'name') ||
+        Object.prototype.hasOwnProperty.call(updates, 'assigneeMemberName') ||
+        Object.prototype.hasOwnProperty.call(updates, 'storyPoints') ||
+        Object.prototype.hasOwnProperty.call(updates, 'dependencies') ||
+        Object.prototype.hasOwnProperty.call(updates, 'turboStoryPoints') ||
+        Object.prototype.hasOwnProperty.call(updates, 'turboEnabled') ||
+        Object.prototype.hasOwnProperty.call(updates, 'dueDate');
+
       state.items[idx] = {
         ...current,
         ...updates,
-        computedStartDate: undefined,
-        computedEndDate: undefined,
+        computedStartDate: affectsScheduling ? undefined : current.computedStartDate,
+        computedEndDate: affectsScheduling ? undefined : current.computedEndDate,
+        computedTimeline: affectsScheduling ? undefined : current.computedTimeline,
       };
     },
     replaceTasks(state, action: PayloadAction<TaskItem[]>) {

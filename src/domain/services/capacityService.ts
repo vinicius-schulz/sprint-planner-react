@@ -360,28 +360,84 @@ export const computeTaskSchedules = (
     return earliestPointer;
   };
 
-  const compareReadyTasks = (a: TaskItem, b: TaskItem, unlockedById?: string) => {
-    if (unlockedById) {
-      const aUnlockedByCurrent = (a.dependencies ?? []).includes(unlockedById);
-      const bUnlockedByCurrent = (b.dependencies ?? []).includes(unlockedById);
-      if (aUnlockedByCurrent !== bUnlockedByCurrent) return aUnlockedByCurrent ? -1 : 1;
+  const stampValue = (stamp: { dayIndex: number; minuteOffset: number }) => stamp.dayIndex * 1_000_000 + stamp.minuteOffset;
+
+  const depsPointerOnly = (task: TaskItem) => {
+    const deps = task.dependencies || [];
+    let pointer = { dayIndex: 0, minuteOffset: 0 };
+    deps.forEach((depId) => {
+      const dep = completed.get(depId);
+      if (!dep) return;
+      if (stampValue(dep) > stampValue(pointer)) pointer = { ...dep };
+    });
+    return pointer;
+  };
+
+  const simulateSchedule = (task: TaskItem) => {
+    const durationMin = durationMinutesForTask(task);
+    if (durationMin <= 0) {
+      const zero = { dayIndex: 0, minuteOffset: 0 };
+      return { startStamp: zero, endStamp: zero };
     }
 
-    // Prefer tasks that were blocked (have deps) once they become ready,
-    // so they run as close as possible to their blockers.
-    const aHasDeps = (a.dependencies?.length ?? 0) > 0;
-    const bHasDeps = (b.dependencies?.length ?? 0) > 0;
-    if (aHasDeps !== bHasDeps) return aHasDeps ? -1 : 1;
+    const depsPointer = depsPointerOnly(task);
+    const earliestPointer = computeEarliestPointer(task);
+    const assignee = task.assigneeMemberName ? memberByName.get(task.assigneeMemberName) : undefined;
+    const assigneeKey = task.assigneeMemberName || `UNASSIGNED-${task.id}`;
 
-    const pa = computeEarliestPointer(a);
-    const pb = computeEarliestPointer(b);
-    if (pa.dayIndex !== pb.dayIndex) return pa.dayIndex - pb.dayIndex;
-    if (pa.minuteOffset !== pb.minuteOffset) return pa.minuteOffset - pb.minuteOffset;
+    // local copies to avoid mutating global schedule during evaluation
+    const localUsage = new Map<number, number>();
+    const globalMap = usageByAssigneeDay.get(assigneeKey);
+    globalMap?.forEach((v, k) => localUsage.set(k, v));
 
-    const byStrategy = compareTask(a, b);
-    if (byStrategy !== 0) return byStrategy;
+    const localWorking = [...workingDaySchedules];
+    const appendLocalNextWorkingDay = () => {
+      if (!localWorking.length) return false;
+      const lastDate = toDate(localWorking[localWorking.length - 1].date);
+      if (!lastDate) return false;
+      const cursor = new Date(lastDate);
+      const limit = 365;
+      for (let i = 0; i < limit; i += 1) {
+        cursor.setDate(cursor.getDate() + 1);
+        if (isWeekend(cursor)) continue;
+        const iso = toISODate(cursor);
+        localWorking.push({ date: iso, isNonWorking: false, periods: generateDefaultPeriods(config) });
+        return true;
+      }
+      return false;
+    };
 
-    return a.id.localeCompare(b.id);
+    let remaining = durationMin;
+    let currentDay = earliestPointer.dayIndex;
+    let startStamp: { dayIndex: number; minuteOffset: number } | null = null;
+    let endStamp: { dayIndex: number; minuteOffset: number } | null = null;
+
+    while (remaining > 0) {
+      if (currentDay >= localWorking.length) {
+        const added = appendLocalNextWorkingDay();
+        if (!added) break;
+      }
+      const day = localWorking[currentDay];
+      const capacity = dayCapacityForAssignee(day, assignee);
+      let used = localUsage.get(currentDay) ?? 0;
+      if (currentDay === earliestPointer.dayIndex && earliestPointer.minuteOffset > used) used = earliestPointer.minuteOffset;
+      const available = Math.max(0, capacity - used);
+      if (available <= 0) {
+        currentDay += 1;
+        continue;
+      }
+      const take = Math.min(available, remaining);
+      const startOffset = used;
+      const endOffset = used + take;
+      if (!startStamp) startStamp = { dayIndex: currentDay, minuteOffset: startOffset };
+      endStamp = { dayIndex: currentDay, minuteOffset: endOffset };
+      localUsage.set(currentDay, endOffset);
+      remaining -= take;
+      if (remaining > 0) currentDay += 1;
+    }
+
+    if (remaining > 0 || !startStamp || !endStamp) return null;
+    return { startStamp, endStamp, depsPointer };
   };
   const dependentsByDep = new Map<string, TaskItem[]>();
   cleanedTasks.forEach((t) => {
@@ -402,9 +458,86 @@ export const computeTaskSchedules = (
   const resultTasks: TaskItem[] = [];
   const scheduledIds = new Set<string>();
 
+  const currentMakespan = () => {
+    let max = 0;
+    lastEndByAssignee.forEach((stamp) => { max = Math.max(max, stampValue(stamp)); });
+    return max;
+  };
+
   while (ready.length) {
-    ready.sort((a, b) => compareReadyTasks(a, b, lastCompletedTaskId));
-    const task = ready.shift()!;
+    const baselineMakespan = currentMakespan();
+
+    let bestIndex = -1;
+    let bestTask: TaskItem | null = null;
+    let bestProjectedMakespan = Number.POSITIVE_INFINITY;
+    let bestGapToDeps = Number.POSITIVE_INFINITY;
+    let bestStart = Number.POSITIVE_INFINITY;
+    let bestEnd = Number.POSITIVE_INFINITY;
+
+    for (let i = 0; i < ready.length; i += 1) {
+      const candidate = ready[i];
+      if (scheduledIds.has(candidate.id)) continue;
+
+      const sim = simulateSchedule(candidate);
+      if (!sim) continue;
+
+      const startV = stampValue(sim.startStamp);
+      const endV = stampValue(sim.endStamp);
+
+      const unlockedByLast = lastCompletedTaskId ? (candidate.dependencies ?? []).includes(lastCompletedTaskId) : false;
+      const hasDeps = (candidate.dependencies?.length ?? 0) > 0;
+
+      // Prefer newly-unlocked dependents and blocked tasks to reduce waiting after blockers.
+      // We encode this as a "virtual" improvement by strongly reducing the gap score.
+      const depsPointer = sim.depsPointer ?? { dayIndex: 0, minuteOffset: 0 };
+      const depsV = stampValue(depsPointer);
+      let gapToDeps = hasDeps ? Math.max(0, startV - depsV) : Number.POSITIVE_INFINITY;
+      if (unlockedByLast && hasDeps) gapToDeps = Math.max(0, gapToDeps - 1000);
+
+      // Projected makespan if we schedule this task now.
+      const assigneeName = candidate.assigneeMemberName;
+      const currentAssigneeEnd = assigneeName ? stampValue(lastEndByAssignee.get(assigneeName) ?? { dayIndex: 0, minuteOffset: 0 }) : 0;
+      const projectedAssigneeEnd = Math.max(currentAssigneeEnd, endV);
+      const projectedMakespan = Math.max(baselineMakespan, projectedAssigneeEnd);
+
+      const pick = () => {
+        bestIndex = i;
+        bestTask = candidate;
+        bestProjectedMakespan = projectedMakespan;
+        bestGapToDeps = gapToDeps;
+        bestStart = startV;
+        bestEnd = endV;
+      };
+
+      if (!bestTask) {
+        pick();
+        continue;
+      }
+
+      if (projectedMakespan !== bestProjectedMakespan) {
+        if (projectedMakespan < bestProjectedMakespan) pick();
+        continue;
+      }
+      if (gapToDeps !== bestGapToDeps) {
+        if (gapToDeps < bestGapToDeps) pick();
+        continue;
+      }
+      if (bestEnd !== endV) {
+        if (endV < bestEnd) pick();
+        continue;
+      }
+      if (bestStart !== startV) {
+        if (startV < bestStart) pick();
+        continue;
+      }
+
+      const byStrategy = compareTask(candidate, bestTask);
+      if (byStrategy < 0) pick();
+    }
+
+    const task = bestTask ?? ready[0];
+    if (bestIndex >= 0) ready.splice(bestIndex, 1);
+    else ready.shift();
 
     if (scheduledIds.has(task.id)) continue;
 

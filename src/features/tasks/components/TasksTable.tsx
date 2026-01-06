@@ -22,26 +22,38 @@ interface DependencyOption {
   value: string;
 }
 
+interface StatusOption {
+  value: 'todo' | 'doing' | 'done';
+  label: string;
+}
+
 interface TasksTableProps {
+  variant?: 'planning' | 'followUp';
   tasks: TaskItem[];
   members: { id: string; name: string }[];
-  storyPointScale: number[];
-  dependencyOptions: DependencyOption[];
-  draggingId: string | null;
-  dragOverId: string | 'end' | null;
-  onDragStart: (taskId: string, event: DragEvent<HTMLButtonElement>) => void;
-  onDragOver: (taskId: string, event: DragEvent<HTMLTableRowElement>) => void;
-  onDrop: (taskId: string, event: DragEvent<HTMLTableRowElement>) => void;
-  onDragEnd: () => void;
-  onTaskUpdate: (id: string, updates: Partial<TaskItem>) => void;
-  onRemove: (task: TaskItem) => void;
+  storyPointScale?: number[];
+  dependencyOptions?: DependencyOption[];
+  draggingId?: string | null;
+  dragOverId?: string | 'end' | null;
+  onDragStart?: (taskId: string, event: DragEvent<HTMLButtonElement>) => void;
+  onDragOver?: (taskId: string, event: DragEvent<HTMLTableRowElement>) => void;
+  onDrop?: (taskId: string, event: DragEvent<HTMLTableRowElement>) => void;
+  onDragEnd?: () => void;
+  onTaskUpdate?: (id: string, updates: Partial<TaskItem>) => void;
+  onRemove?: (task: TaskItem) => void;
   onOpenManage: (task: TaskItem) => void;
-  handleDependenciesUpdate: (id: string, deps: string[]) => void;
-  getRowClass: (task: TaskItem, runningTotals: Map<string, number>) => string;
+  handleDependenciesUpdate?: (id: string, deps: string[]) => void;
+  getRowClass?: (task: TaskItem, runningTotals: Map<string, number>) => string;
   formatDateTime: (value?: string) => string;
+  statusOptions?: StatusOption[];
+  onStatusChange?: (task: TaskItem, status: StatusOption['value']) => void;
+  onCompletedAtChange?: (task: TaskItem, nextDateTime: string) => void;
+  toDateTimeLocalValue?: (value?: string) => string;
+  todayIso?: string;
 }
 
 export function TasksTable({
+  variant = 'planning',
   tasks,
   members,
   storyPointScale,
@@ -58,7 +70,105 @@ export function TasksTable({
   handleDependenciesUpdate,
   getRowClass,
   formatDateTime,
+  statusOptions,
+  onStatusChange,
+  onCompletedAtChange,
+  toDateTimeLocalValue,
+  todayIso,
 }: TasksTableProps) {
+  const effectiveStoryPointScale = storyPointScale ?? [];
+  const effectiveDependencyOptions = dependencyOptions ?? [];
+  const onDragStartFn = onDragStart ?? (() => {});
+  const onDragOverFn = onDragOver ?? (() => {});
+  const onDropFn = onDrop ?? (() => {});
+  const onDragEndFn = onDragEnd ?? (() => {});
+  const onTaskUpdateFn = onTaskUpdate ?? (() => {});
+  const onRemoveFn = onRemove ?? (() => {});
+  const onDependenciesUpdateFn = handleDependenciesUpdate ?? (() => {});
+  const getRowClassFn = getRowClass ?? (() => '');
+  if (variant === 'followUp') {
+    return (
+      <div className={styles.list}>
+        <Table size="small" className={styles.table}>
+          <TableHead>
+            <TableRow>
+              <TableCell>ID</TableCell>
+              <TableCell>Nome</TableCell>
+              <TableCell>Responsável</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Prazo</TableCell>
+              <TableCell>Concluída em</TableCell>
+              <TableCell>Início</TableCell>
+              <TableCell>Fim</TableCell>
+              <TableCell>SP</TableCell>
+              <TableCell width={80}>Ações</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {tasks.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={10}>Nenhuma tarefa encontrada com os filtros.</TableCell>
+              </TableRow>
+            )}
+            {tasks.map((task) => (
+              <TableRow key={task.id} hover>
+                <TableCell>{task.id}</TableCell>
+                <TableCell>{task.name}</TableCell>
+                <TableCell>{task.assigneeMemberName || '—'}</TableCell>
+                <TableCell>
+                  {statusOptions && onStatusChange ? (
+                    <TextField
+                      select
+                      size="small"
+                      variant="standard"
+                      value={(task.status ?? 'todo')}
+                      onChange={(e) => onStatusChange(task, e.target.value as StatusOption['value'])}
+                    >
+                      {statusOptions.map((opt) => (
+                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                      ))}
+                    </TextField>
+                  ) : (
+                    task.status ?? 'todo'
+                  )}
+                </TableCell>
+                <TableCell>{task.dueDate ? formatDateTime(task.dueDate) : '—'}</TableCell>
+                <TableCell>
+                  {onCompletedAtChange && toDateTimeLocalValue ? (
+                    (task.status ?? 'todo') === 'done' ? (
+                      <TextField
+                        type="datetime-local"
+                        size="small"
+                        variant="standard"
+                        value={toDateTimeLocalValue(task.completedAt) || `${todayIso ?? ''}T00:00`}
+                        onChange={(e) => onCompletedAtChange(task, e.target.value)}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    ) : (
+                      '—'
+                    )
+                  ) : (
+                    task.completedAt ? formatDateTime(task.completedAt) : '—'
+                  )}
+                </TableCell>
+                <TableCell>{formatDateTime(task.computedStartDate)}</TableCell>
+                <TableCell>{formatDateTime(task.computedEndDate)}</TableCell>
+                <TableCell>{task.storyPoints}</TableCell>
+                <TableCell>
+                  <div className={styles.actionsGroup}>
+                    <IconButton aria-label="detalhes" onClick={() => onOpenManage(task)} size="small">
+                      <InfoOutlinedIcon fontSize="small" />
+                    </IconButton>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  }
+
   return (
     <div className={styles.list}>
       <Table size="small" className={styles.table}>
@@ -87,15 +197,15 @@ export function TasksTable({
             const rows: ReactNode[] = [];
 
             tasks.forEach((task) => {
-              const rowClass = getRowClass(task, runningTotals);
+              const rowClass = getRowClassFn(task, runningTotals);
 
               if (draggingId && dragOverId === task.id) {
                 rows.push(
                   <TableRow
                     key={`${task.id}-indicator`}
                     className={styles.dropIndicatorRow}
-                    onDragOver={(event) => onDragOver(task.id, event)}
-                    onDrop={(event) => onDrop(task.id, event)}
+                    onDragOver={(event) => onDragOverFn(task.id, event)}
+                    onDrop={(event) => onDropFn(task.id, event)}
                   >
                     <TableCell colSpan={10} className={styles.dropIndicatorCell}>
                       <div className={styles.dropIndicatorLine} />
@@ -109,17 +219,17 @@ export function TasksTable({
                   key={task.id}
                   hover
                   className={[rowClass, task.turboEnabled ? styles.turboRow : ''].filter(Boolean).join(' ')}
-                  onDragOver={(event) => onDragOver(task.id, event)}
-                  onDrop={(event) => onDrop(task.id, event)}
-                  onDragEnd={onDragEnd}
+                    onDragOver={(event) => onDragOverFn(task.id, event)}
+                    onDrop={(event) => onDropFn(task.id, event)}
+                    onDragEnd={onDragEndFn}
                 >
                   <TableCell className={styles.dragHandleCell}>
                     <IconButton
                       aria-label="mover"
                       size="small"
                       draggable
-                      onDragStart={(event) => onDragStart(task.id, event)}
-                      onDragEnd={onDragEnd}
+                        onDragStart={(event) => onDragStartFn(task.id, event)}
+                        onDragEnd={onDragEndFn}
                     >
                       <DragIndicatorIcon fontSize="small" />
                     </IconButton>
@@ -129,7 +239,7 @@ export function TasksTable({
                     <TextField
                       variant="standard"
                       value={task.name}
-                      onChange={(e) => onTaskUpdate(task.id, { name: e.target.value })}
+                        onChange={(e) => onTaskUpdateFn(task.id, { name: e.target.value })}
                       fullWidth
                       size="small"
                     />
@@ -139,11 +249,11 @@ export function TasksTable({
                       select
                       variant="standard"
                       value={task.storyPoints}
-                      onChange={(e) => onTaskUpdate(task.id, { storyPoints: Number(e.target.value) })}
+                        onChange={(e) => onTaskUpdateFn(task.id, { storyPoints: Number(e.target.value) })}
                       fullWidth
                       size="small"
                     >
-                      {storyPointScale.map((sp) => (
+                        {effectiveStoryPointScale.map((sp) => (
                         <MenuItem key={sp} value={sp}>{sp}</MenuItem>
                       ))}
                     </TextField>
@@ -153,7 +263,7 @@ export function TasksTable({
                       variant="standard"
                       type="date"
                       value={task.dueDate ?? ''}
-                      onChange={(e) => onTaskUpdate(task.id, { dueDate: e.target.value || undefined })}
+                        onChange={(e) => onTaskUpdateFn(task.id, { dueDate: e.target.value || undefined })}
                       fullWidth
                       size="small"
                       InputLabelProps={{ shrink: true }}
@@ -164,10 +274,10 @@ export function TasksTable({
                   <TableCell>
                     <Autocomplete
                       multiple
-                      options={dependencyOptions.filter((o) => o.value !== task.id)}
+                        options={effectiveDependencyOptions.filter((o) => o.value !== task.id)}
                       getOptionLabel={(o) => o.label}
-                      value={dependencyOptions.filter((o) => task.dependencies.includes(o.value))}
-                      onChange={(_, newValue) => handleDependenciesUpdate(task.id, newValue.map((o) => o.value))}
+                        value={effectiveDependencyOptions.filter((o) => task.dependencies.includes(o.value))}
+                        onChange={(_, newValue) => onDependenciesUpdateFn(task.id, newValue.map((o) => o.value))}
                       renderTags={(value, getTagProps) =>
                         value.map((option, index) => (
                           (() => {
@@ -197,7 +307,7 @@ export function TasksTable({
                       select
                       variant="standard"
                       value={task.assigneeMemberName || ''}
-                      onChange={(e) => onTaskUpdate(task.id, { assigneeMemberName: e.target.value || undefined })}
+                      onChange={(e) => onTaskUpdateFn(task.id, { assigneeMemberName: e.target.value || undefined })}
                       fullWidth
                       size="small"
                     >
@@ -209,9 +319,11 @@ export function TasksTable({
                   </TableCell>
                   <TableCell>
                     <div className={styles.actionsGroup}>
-                      <IconButton aria-label="remover" onClick={() => onRemove(task)} size="small">
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
+                        {onRemove && (
+                          <IconButton aria-label="remover" onClick={() => onRemoveFn(task)} size="small">
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        )}
                       <IconButton aria-label="detalhes e edição" onClick={() => onOpenManage(task)} size="small">
                         <InfoOutlinedIcon fontSize="small" />
                       </IconButton>
@@ -226,9 +338,9 @@ export function TasksTable({
                 <TableRow
                   key="drop-end-indicator"
                   className={dragOverId === 'end' ? styles.dropIndicatorRow : undefined}
-                  onDragOver={(event) => onDragOver('end', event)}
-                  onDrop={(event) => onDrop('end', event)}
-                  onDragEnd={onDragEnd}
+                  onDragOver={(event) => onDragOverFn('end', event)}
+                  onDrop={(event) => onDropFn('end', event)}
+                  onDragEnd={onDragEndFn}
                 >
                   <TableCell colSpan={10} className={styles.dropIndicatorCell}>
                     <div className={styles.dropIndicatorLine} />

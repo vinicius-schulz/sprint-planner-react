@@ -7,27 +7,21 @@ import {
   DialogContent,
   DialogTitle,
   Divider,
-  IconButton,
   List,
   ListItem,
   ListItemText,
   MenuItem,
   Stack,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   TextField,
   Typography,
   Button,
 } from '@mui/material';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { updateTask } from '../../features/tasks/tasksSlice';
 import type { TaskItem } from '../../domain/types';
 import { formatMinutesToClock } from '../../domain/services/timeFormat';
 import { GanttTimelineFrappe } from '../GanttTimelineFrappe';
+import { TasksTable } from '../../features/tasks/components/TasksTable';
 import styles from './FollowUpView.module.css';
 
 const formatDateTimeBr = (value?: string) => {
@@ -206,74 +200,18 @@ export function FollowUpView() {
       <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Lista de tarefas</Typography>
-          <div className={styles.tableWrap}>
-            <Table size="small" className={styles.table}>
-              <TableHead>
-                <TableRow>
-                  <TableCell>ID</TableCell>
-                  <TableCell>Nome</TableCell>
-                  <TableCell>Responsável</TableCell>
-                  <TableCell>Status</TableCell>
-                  <TableCell>Prazo</TableCell>
-                  <TableCell>Concluída em</TableCell>
-                  <TableCell>Início</TableCell>
-                  <TableCell>Fim</TableCell>
-                  <TableCell>SP</TableCell>
-                  <TableCell width={80}>Ações</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filteredTasks.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={10}>Nenhuma tarefa encontrada com os filtros.</TableCell>
-                  </TableRow>
-                )}
-                {filteredTasks.map((task) => (
-                  <TableRow key={task.id} hover>
-                    <TableCell>{task.id}</TableCell>
-                    <TableCell>{task.name}</TableCell>
-                    <TableCell>{task.assigneeMemberName || '—'}</TableCell>
-                    <TableCell>
-                      <TextField
-                        select
-                        size="small"
-                        variant="standard"
-                        value={(task.status ?? 'todo')}
-                        onChange={(e) => handleStatusChange(task, e.target.value as 'todo' | 'doing' | 'done')}
-                      >
-                        {statusOptions.map((opt) => (
-                          <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                        ))}
-                      </TextField>
-                    </TableCell>
-                    <TableCell>{task.dueDate ? formatDateTimeBr(task.dueDate) : '—'}</TableCell>
-                    <TableCell>
-                      {(task.status ?? 'todo') === 'done' ? (
-                        <TextField
-                          type="datetime-local"
-                          size="small"
-                          variant="standard"
-                          value={toDateTimeLocalValue(task.completedAt) || `${todayIso}T00:00`}
-                          onChange={(e) => handleCompletedAtChange(task, e.target.value)}
-                          InputLabelProps={{ shrink: true }}
-                        />
-                      ) : (
-                        '—'
-                      )}
-                    </TableCell>
-                    <TableCell>{formatDateTimeBr(task.computedStartDate)}</TableCell>
-                    <TableCell>{formatDateTimeBr(task.computedEndDate)}</TableCell>
-                    <TableCell>{task.storyPoints}</TableCell>
-                    <TableCell>
-                      <IconButton aria-label="detalhes" onClick={() => handleOpenManage(task)} size="small">
-                        <InfoOutlinedIcon fontSize="small" />
-                      </IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          <TasksTable
+            variant="followUp"
+            tasks={filteredTasks}
+            members={members.map((m) => ({ id: m.id, name: m.name }))}
+            formatDateTime={formatDateTimeBr}
+            onOpenManage={handleOpenManage}
+            statusOptions={statusOptions}
+            onStatusChange={handleStatusChange}
+            onCompletedAtChange={handleCompletedAtChange}
+            toDateTimeLocalValue={toDateTimeLocalValue}
+            todayIso={todayIso}
+          />
         </CardContent>
       </Card>
 

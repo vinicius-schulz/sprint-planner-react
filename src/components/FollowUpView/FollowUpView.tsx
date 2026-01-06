@@ -23,7 +23,8 @@ import {
   Button,
 } from '@mui/material';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import { useAppSelector } from '../../app/hooks';
+import { useAppDispatch, useAppSelector } from '../../app/hooks';
+import { updateTask } from '../../features/tasks/tasksSlice';
 import type { TaskItem } from '../../domain/types';
 import { GanttTimelineFrappe } from '../GanttTimelineFrappe';
 import styles from './FollowUpView.module.css';
@@ -56,7 +57,15 @@ const statusOptions: Array<{ value: 'todo' | 'doing' | 'done'; label: string }> 
 const taskManageEventName = 'task-manage-open';
 const navigateToPlanningEventName = 'navigate-to-planning';
 
+const formatISODate = (value: Date) => {
+  const yyyy = value.getFullYear();
+  const mm = String(value.getMonth() + 1).padStart(2, '0');
+  const dd = String(value.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 export function FollowUpView() {
+  const dispatch = useAppDispatch();
   const tasks = useAppSelector((state) => state.tasks.items);
   const members = useAppSelector((state) => state.members.items);
 
@@ -102,6 +111,20 @@ export function FollowUpView() {
     window.dispatchEvent(new CustomEvent(navigateToPlanningEventName, { detail: { taskId } }));
   };
 
+  const todayIso = useMemo(() => formatISODate(new Date()), []);
+
+  const handleStatusChange = (task: TaskItem, nextStatus: 'todo' | 'doing' | 'done') => {
+    const updates: Partial<Pick<TaskItem, 'status' | 'completedAt'>> = { status: nextStatus };
+    if (nextStatus === 'done' && !task.completedAt) {
+      updates.completedAt = todayIso;
+    }
+    dispatch(updateTask({ id: task.id, updates }));
+  };
+
+  const handleCompletedAtChange = (task: TaskItem, nextDate: string) => {
+    dispatch(updateTask({ id: task.id, updates: { completedAt: nextDate || undefined } }));
+  };
+
   return (
     <div className={styles.wrapper}>
       <Card>
@@ -109,7 +132,7 @@ export function FollowUpView() {
           <Stack direction={{ xs: 'column', md: 'row' }} alignItems={{ xs: 'flex-start', md: 'center' }} justifyContent="space-between" spacing={2}>
             <Box>
               <Typography variant="h6">Acompanhamento</Typography>
-              <Typography variant="body2" color="text.secondary">Visão diária e somente leitura. Edite no Planejamento.</Typography>
+              <Typography variant="body2" color="text.secondary">Atualize status e conclusão. Para editar planejamento, use Planejamento.</Typography>
             </Box>
             <Box className={styles.filters}>
               <TextField
@@ -147,11 +170,11 @@ export function FollowUpView() {
         </CardContent>
       </Card>
 
-      <GanttTimelineFrappe inline title="Acompanhamento - Gantt" />
+      <GanttTimelineFrappe inline title="Acompanhamento - Gantt" uniformDoneColor />
 
       <Card>
         <CardContent>
-          <Typography variant="subtitle1" gutterBottom>Lista de tarefas (somente leitura)</Typography>
+          <Typography variant="subtitle1" gutterBottom>Lista de tarefas</Typography>
           <div className={styles.tableWrap}>
             <Table size="small" className={styles.table}>
               <TableHead>
@@ -179,9 +202,34 @@ export function FollowUpView() {
                     <TableCell>{task.id}</TableCell>
                     <TableCell>{task.name}</TableCell>
                     <TableCell>{task.assigneeMemberName || '—'}</TableCell>
-                    <TableCell>{statusOptions.find((s) => s.value === (task.status ?? 'todo'))?.label ?? 'A Fazer'}</TableCell>
+                    <TableCell>
+                      <TextField
+                        select
+                        size="small"
+                        variant="standard"
+                        value={(task.status ?? 'todo')}
+                        onChange={(e) => handleStatusChange(task, e.target.value as 'todo' | 'doing' | 'done')}
+                      >
+                        {statusOptions.map((opt) => (
+                          <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
+                        ))}
+                      </TextField>
+                    </TableCell>
                     <TableCell>{task.dueDate ? formatDateTimeBr(task.dueDate) : '—'}</TableCell>
-                    <TableCell>{task.completedAt ? formatDateTimeBr(task.completedAt) : '—'}</TableCell>
+                    <TableCell>
+                      {(task.status ?? 'todo') === 'done' ? (
+                        <TextField
+                          type="date"
+                          size="small"
+                          variant="standard"
+                          value={task.completedAt ?? todayIso}
+                          onChange={(e) => handleCompletedAtChange(task, e.target.value)}
+                          InputLabelProps={{ shrink: true }}
+                        />
+                      ) : (
+                        '—'
+                      )}
+                    </TableCell>
                     <TableCell>{formatDateTimeBr(task.computedStartDate)}</TableCell>
                     <TableCell>{formatDateTimeBr(task.computedEndDate)}</TableCell>
                     <TableCell>{task.storyPoints}</TableCell>

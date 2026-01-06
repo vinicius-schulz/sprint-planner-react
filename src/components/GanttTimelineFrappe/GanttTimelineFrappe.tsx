@@ -8,6 +8,7 @@ import {
   Typography,
   Box,
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles';
 import Gantt from 'frappe-gantt';
 import './frappe-gantt.css';
 import { useEffect, useMemo, useRef } from 'react';
@@ -24,6 +25,7 @@ type ParsedTask = TaskItem & {
 type GanttTimelineFrappeProps = {
   inline?: boolean;
   title?: string;
+  uniformDoneColor?: boolean;
 };
 
 const parseDateTime = (value?: string): Date | null => {
@@ -59,9 +61,12 @@ const formatISODate = (value: Date) => {
 
 const taskManageEventName = 'task-manage-open';
 
-export function GanttTimelineFrappe({ inline = false, title = 'Cronograma - Gantt' }: GanttTimelineFrappeProps) {
+export function GanttTimelineFrappe({ inline = false, title = 'Cronograma - Gantt', uniformDoneColor = false }: GanttTimelineFrappeProps) {
   const { tasks, errors } = useAppSelector(selectTaskSchedules);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const theme = useTheme();
+
+  const doneColor = theme.palette.success.main;
 
   const palette = useMemo(
     () => ['#1976d2', '#9c27b0', '#ef6c00', '#2e7d32', '#d81b60', '#6d4c41', '#00838f', '#5e35b1', '#455a64', '#c2185b'],
@@ -103,6 +108,9 @@ export function GanttTimelineFrappe({ inline = false, title = 'Cronograma - Gant
       const displayEnd = durationMs < 86_400_000
         ? new Date(task.start.getTime() + 86_400_000)
         : task.end;
+
+      const isDone = (task.status ?? 'todo') === 'done';
+      const customClass = uniformDoneColor && isDone ? 'task-done' : colorClass;
       return {
         id: task.id,
         name: `${task.id} · ${task.name}`,
@@ -110,7 +118,7 @@ export function GanttTimelineFrappe({ inline = false, title = 'Cronograma - Gant
         end: displayEnd.toISOString().slice(0, 10),
         progress: 100,
         dependencies: (task.dependencies || []).join(',') || undefined,
-        custom_class: colorClass,
+        custom_class: customClass,
         meta: task,
       };
     });
@@ -118,18 +126,27 @@ export function GanttTimelineFrappe({ inline = false, title = 'Cronograma - Gant
     const minStart = parsed.reduce((min, t) => (t.start < min ? t.start : min), parsed[0].start);
     const maxEnd = parsed.reduce((max, t) => (t.end > max ? t.end : max), parsed[0].end);
 
-    const styleText = [...colorByAssignee.entries()]
-      .map(([, color], idx) => (
+    const styleText = [
+      ...[...colorByAssignee.entries()].map(([, color], idx) => (
         [
           `.assignee-${idx} .bar { fill: ${color}; stroke: ${color}; }`,
           `.assignee-${idx} .bar-progress { fill: ${color}; stroke: ${color}; }`,
           `.assignee-${idx} .bar-label { fill: #fff; }`,
         ].join('\n')
-      ))
-      .join('\n');
+      )),
+      ...(uniformDoneColor
+        ? [
+            [
+              `.task-done .bar { fill: ${doneColor}; stroke: ${doneColor}; opacity: 0.55; }`,
+              `.task-done .bar-progress { fill: ${doneColor}; stroke: ${doneColor}; opacity: 0.55; }`,
+              `.task-done .bar-label { fill: #fff; }`,
+            ].join('\n'),
+          ]
+        : []),
+    ].join('\n');
 
     return { ganttData, colorByAssignee, bounds: { minStart, maxEnd }, styleText };
-  }, [parsed, palette]);
+  }, [parsed, palette, uniformDoneColor, doneColor]);
 
   const todayIso = useMemo(() => formatISODate(new Date()), []);
 
@@ -204,6 +221,12 @@ export function GanttTimelineFrappe({ inline = false, title = 'Cronograma - Gant
         </div>
       )}
       <div className={styles.legend}>
+        {uniformDoneColor && (
+          <span key="done" className={styles.legendItem}>
+            <span className={styles.legendSwatch} style={{ background: doneColor, opacity: 0.55 }} />
+            Concluídas
+          </span>
+        )}
         {[...colorByAssignee.entries()].map(([assignee, color], idx) => (
           <span key={assignee} className={styles.legendItem}>
             <span className={styles.legendSwatch} style={{ background: color }} />

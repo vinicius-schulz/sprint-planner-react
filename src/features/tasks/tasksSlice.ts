@@ -28,7 +28,10 @@ const tasksSlice = createSlice({
       state,
       action: PayloadAction<{
         id: string;
-        updates: Partial<Pick<TaskItem, 'name' | 'assigneeMemberName' | 'storyPoints' | 'dependencies' | 'turboStoryPoints' | 'turboEnabled' | 'dueDate'>>;
+        updates: Partial<Pick<
+          TaskItem,
+          'name' | 'assigneeMemberName' | 'storyPoints' | 'dependencies' | 'turboStoryPoints' | 'turboEnabled' | 'dueDate' | 'status' | 'completedAt'
+        >>;
       }>,
     ) {
       const { id, updates } = action.payload;

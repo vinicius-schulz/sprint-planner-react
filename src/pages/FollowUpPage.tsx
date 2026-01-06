@@ -1,12 +1,14 @@
 import { Alert, Box, Button, Card, CardContent, Stack, Typography } from '@mui/material';
 import { useNavigate, useParams } from 'react-router-dom';
-import { useAppSelector } from '../app/hooks';
+import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { ReportExportButton } from '../components/ReportExport';
 import { FollowUpView } from '../components/FollowUpView';
 import { useEnsureActiveSprint } from '../app/useEnsureActiveSprint';
+import { finalizePlanning, reopenFollowUp } from '../features/review/planningLifecycleSlice';
 
 export function FollowUpPage() {
   useEnsureActiveSprint();
+  const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const { sprintId } = useParams<{ sprintId: string }>();
   const planningStatus = useAppSelector((state) => state.planningLifecycle.status);
@@ -40,6 +42,8 @@ export function FollowUpPage() {
     );
   }
 
+  const locked = planningStatus === 'closed';
+
   return (
     <>
       <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 2, gap: 2, flexWrap: 'wrap' }}>
@@ -49,9 +53,35 @@ export function FollowUpPage() {
           </Typography>
           <Typography variant="body2" color="text.secondary">Visão diária com Gantt aberto e tarefas em leitura.</Typography>
         </Box>
-        <ReportExportButton />
+        <Stack direction="row" spacing={1} flexWrap="wrap">
+          {planningStatus === 'followup' && (
+            <Button
+              variant="outlined"
+              color="secondary"
+              onClick={() => dispatch(finalizePlanning())}
+            >
+              Finalizar acompanhamento
+            </Button>
+          )}
+          {planningStatus === 'closed' && (
+            <Button
+              variant="outlined"
+              onClick={() => dispatch(reopenFollowUp())}
+            >
+              Reabrir acompanhamento
+            </Button>
+          )}
+          <ReportExportButton />
+        </Stack>
       </Box>
-      <FollowUpView />
+      {planningStatus === 'closed' && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Sprint finalizada. Dados permanecem somente leitura; reabra o acompanhamento para registrar novo status ou ajustes visuais.
+        </Alert>
+      )}
+      <Box sx={{ opacity: locked ? 0.6 : 1, pointerEvents: locked ? 'none' : 'auto', userSelect: locked ? 'none' : 'auto' }}>
+        <FollowUpView />
+      </Box>
     </>
   );
 }

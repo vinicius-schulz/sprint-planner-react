@@ -7,7 +7,7 @@ import { hydrateStoreFromState } from './sprintHydrator';
 export const useEnsureActiveSprint = () => {
   const { sprintId } = useParams<{ sprintId: string }>();
   const dispatch = useAppDispatch();
-  const hydratedSprintId = useRef<string | undefined>();
+  const hydratedSprintId = useRef<string | undefined>(undefined);
   const hasRuntimeState = useAppSelector((state) => {
     const hasSprint = Boolean(state.sprint.startDate || state.sprint.endDate || state.sprint.title);
     const hasTasks = state.tasks.items.length > 0;

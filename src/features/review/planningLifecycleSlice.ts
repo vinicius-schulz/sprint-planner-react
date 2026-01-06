@@ -12,6 +12,14 @@ const planningLifecycleSlice = createSlice({
       state.status = 'followup';
       state.closedAt = new Date().toISOString();
     },
+    finalizePlanning(state) {
+      state.status = 'closed';
+      state.closedAt = new Date().toISOString();
+    },
+    reopenFollowUp(state) {
+      state.status = 'followup';
+      state.closedAt = new Date().toISOString();
+    },
     reopenPlanning(state) {
       state.status = 'editing';
       state.closedAt = undefined;
@@ -25,5 +33,5 @@ const planningLifecycleSlice = createSlice({
   },
 });
 
-export const { closePlanning, reopenPlanning, setPlanningLifecycleState, resetPlanningLifecycle } = planningLifecycleSlice.actions;
+export const { closePlanning, finalizePlanning, reopenFollowUp, reopenPlanning, setPlanningLifecycleState, resetPlanningLifecycle } = planningLifecycleSlice.actions;
 export default planningLifecycleSlice.reducer;

@@ -81,6 +81,8 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
     return names;
   }, [members, config.countedMemberTypes]);
 
+  const baseStoryPoints = (task: TaskItem): number => task.storyPoints;
+
   const effectiveStoryPoints = (task: TaskItem): number => {
     if (task.turboEnabled && Number.isFinite(task.turboStoryPoints)) {
       return Math.max(0, Number(task.turboStoryPoints));
@@ -88,18 +90,49 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
     return task.storyPoints;
   };
 
-  const totalStoryPoints = useMemo(() => {
+  const totalBaseStoryPoints = useMemo(() => tasks.reduce((sum, t) => sum + baseStoryPoints(t), 0), [tasks]);
+
+  const totalBaseStoryPointsCounted = useMemo(() => {
+    return tasks.reduce((sum, t) => {
+      if (t.assigneeMemberName && !countedMemberNames.has(t.assigneeMemberName)) return sum;
+      return sum + baseStoryPoints(t);
+    }, 0);
+  }, [tasks, countedMemberNames]);
+
+  const totalEffectiveStoryPoints = useMemo(() => tasks.reduce((sum, t) => sum + effectiveStoryPoints(t), 0), [tasks]);
+
+  const totalEffectiveStoryPointsCounted = useMemo(() => {
     return tasks.reduce((sum, t) => {
       if (t.assigneeMemberName && !countedMemberNames.has(t.assigneeMemberName)) return sum;
       return sum + effectiveStoryPoints(t);
     }, 0);
   }, [tasks, countedMemberNames]);
 
+  const storyPointsByMemberBase = useMemo(() => {
+    const acc = new Map<string, number>();
+    tasks.forEach((t) => {
+      if (!t.assigneeMemberName) return;
+      const prev = acc.get(t.assigneeMemberName) ?? 0;
+      acc.set(t.assigneeMemberName, prev + baseStoryPoints(t));
+    });
+    return acc;
+  }, [tasks]);
+
+  const storyPointsByMemberEffective = useMemo(() => {
+    const acc = new Map<string, number>();
+    tasks.forEach((t) => {
+      if (!t.assigneeMemberName) return;
+      const prev = acc.get(t.assigneeMemberName) ?? 0;
+      acc.set(t.assigneeMemberName, prev + effectiveStoryPoints(t));
+    });
+    return acc;
+  }, [tasks]);
+
   const capacityStoryPoints = teamCapacity.totalStoryPoints;
-  const capacityRatio = capacityStoryPoints > 0 ? totalStoryPoints / capacityStoryPoints : Infinity;
+  const capacityRatio = capacityStoryPoints > 0 ? totalEffectiveStoryPointsCounted / capacityStoryPoints : Infinity;
   const warnLimit = 1 + config.workloadWarningOver;
   const errLimit = 1 + config.workloadErrorOver;
-  const capacitySeverity = capacityStoryPoints <= 0 && totalStoryPoints > 0
+  const capacitySeverity = capacityStoryPoints <= 0 && totalEffectiveStoryPoints > 0
     ? 'error'
     : capacityRatio > errLimit
       ? 'error'
@@ -186,7 +219,7 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
 
           {capacitySeverity && (
             <Alert severity={capacitySeverity === 'error' ? 'error' : 'warning'} sx={{ mb: 1 }}>
-              Story Points planejados ({totalStoryPoints}) excedem a capacidade da sprint ({capacityStoryPoints}).
+              Story Points planejados (efetivos) ({totalEffectiveStoryPoints}) excedem a capacidade da sprint ({capacityStoryPoints}).
               Limites: aviso até {Math.round((warnLimit - 1) * 100)}% e erro acima de {Math.round((errLimit - 1) * 100)}% sobre a capacidade.
             </Alert>
           )}
@@ -206,12 +239,133 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
       <Card>
         <CardContent>
           <Typography variant="subtitle1" gutterBottom>Resumo do planejamento</Typography>
-          <Stack spacing={1}>
-            <Typography variant="body2">Sprint: {formatDateTimeBr(sprint.startDate)} → {formatDateTimeBr(sprint.endDate)}</Typography>
-            <Typography variant="body2">Membros: {members.length}</Typography>
-            <Typography variant="body2">Eventos: {events.length}</Typography>
-            <Typography variant="body2">Tarefas: {tasks.length}</Typography>
+          <Stack spacing={2}>
+            <Stack spacing={1}>
+              <Typography variant="body2">Título da sprint: {sprint.title || '—'}</Typography>
+              <Typography variant="body2">Período: {formatDateTimeBr(sprint.startDate)} → {formatDateTimeBr(sprint.endDate)}</Typography>
+              <Typography variant="body2">Calendário: {calendar.daySchedules.length} dias configurados · Não úteis manuais: {calendar.nonWorkingDaysManual.length} · Fins de semana removidos: {calendar.nonWorkingDaysRemoved.length}</Typography>
+            </Stack>
+            <Divider />
+            <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} alignItems="flex-start">
+              <Box flex={1} minWidth={0}>
+                <Typography variant="subtitle2" gutterBottom>Configuração</Typography>
+                <Stack spacing={0.5}>
+                  <Typography variant="body2">Horas/dia: {config.dailyWorkHours}</Typography>
+                  <Typography variant="body2">SP/hora: {config.storyPointsPerHour}</Typography>
+                  <Typography variant="body2">Estratégia: {config.schedulingStrategy ?? DEFAULT_CONFIG.schedulingStrategy}</Typography>
+                  <Typography variant="body2">Escala SP: {config.storyPointScale.join(', ')}</Typography>
+                  <Typography variant="body2">Limite aviso: +{Math.round(config.workloadWarningOver * 100)}% · Limite erro: +{Math.round(config.workloadErrorOver * 100)}%</Typography>
+                  <Typography variant="body2">Períodos padrão: {config.defaultWorkingPeriods.map((p) => `${p.start}-${p.end}`).join('; ')}</Typography>
+                  <Typography variant="body2">Tipos contabilizados: {config.countedMemberTypes.join(', ')}</Typography>
+                </Stack>
+              </Box>
+              <Box flex={1} minWidth={0}>
+                <Typography variant="subtitle2" gutterBottom>Capacidade</Typography>
+                <Stack spacing={0.5}>
+                  <Typography variant="body2">Membros contabilizados: {Array.from(countedMemberNames).length} / {members.length}</Typography>
+                  <Typography variant="body2">Capacidade em SP: {capacityStoryPoints}</Typography>
+                  <Typography variant="body2">SP planejados (base, todos): {totalBaseStoryPoints}</Typography>
+                  <Typography variant="body2">SP planejados (base, papéis contados): {totalBaseStoryPointsCounted}</Typography>
+                  <Typography variant="body2">SP efetivos (turbo, todos): {totalEffectiveStoryPoints}</Typography>
+                  <Typography variant="body2">SP efetivos (turbo, papéis contados): {totalEffectiveStoryPointsCounted}</Typography>
+                  <Typography variant="body2">Relação (efetivos contados / capacidade): {capacityStoryPoints > 0 ? capacityRatio.toFixed(2) : '—'}</Typography>
+                </Stack>
+              </Box>
+            </Stack>
           </Stack>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <Typography variant="subtitle1" gutterBottom>Calendário (dias da sprint)</Typography>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Data</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Períodos</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {calendar.daySchedules.length === 0 && (
+                <TableRow><TableCell colSpan={3}>Nenhum dia configurado. Use o passo Sprint para gerar a agenda.</TableCell></TableRow>
+              )}
+              {calendar.daySchedules.map((d) => (
+                <TableRow key={d.date}>
+                  <TableCell>{formatDateTimeBr(d.date)}</TableCell>
+                  <TableCell>{d.isNonWorking ? 'Não útil' : 'Útil'}</TableCell>
+                  <TableCell>{d.periods.length ? d.periods.map((p) => `${p.start}-${p.end}`).join('; ') : '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <Typography variant="subtitle1" gutterBottom>Time</Typography>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Nome</TableCell>
+                <TableCell>Função</TableCell>
+                <TableCell>Senioridade</TableCell>
+                <TableCell>Maturidade</TableCell>
+                <TableCell>Disponibilidade</TableCell>
+                <TableCell>SP planejado (base)</TableCell>
+                <TableCell>SP efetivo (turbo)</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {members.length === 0 && (
+                <TableRow><TableCell colSpan={7}>Nenhum membro cadastrado.</TableCell></TableRow>
+              )}
+              {members.map((m) => (
+                <TableRow key={m.id} hover>
+                  <TableCell>{m.name}</TableCell>
+                  <TableCell>{m.roleType}</TableCell>
+                  <TableCell>{m.seniority}</TableCell>
+                  <TableCell>{m.maturity}</TableCell>
+                  <TableCell>{m.availabilityPercent}%</TableCell>
+                  <TableCell>{storyPointsByMemberBase.get(m.name) ?? 0}</TableCell>
+                  <TableCell>{storyPointsByMemberEffective.get(m.name) ?? 0}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent>
+          <Typography variant="subtitle1" gutterBottom>Eventos</Typography>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>Tipo</TableCell>
+                <TableCell>Descrição</TableCell>
+                <TableCell>Data</TableCell>
+                <TableCell>Duração (min)</TableCell>
+                <TableCell>Recorrente</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {events.length === 0 && (
+                <TableRow><TableCell colSpan={5}>Nenhum evento cadastrado.</TableCell></TableRow>
+              )}
+              {events.map((e) => (
+                <TableRow key={e.id} hover>
+                  <TableCell>{e.type}</TableCell>
+                  <TableCell>{e.description || '—'}</TableCell>
+                  <TableCell>{formatDateTimeBr(e.date)}</TableCell>
+                  <TableCell>{e.minutes}</TableCell>
+                  <TableCell>{e.recurringDaily ? 'Sim' : 'Não'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
         </CardContent>
       </Card>
 
@@ -224,10 +378,13 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell>ID</TableCell>
                 <TableCell>Nome</TableCell>
                 <TableCell>Responsável</TableCell>
-                <TableCell>SP</TableCell>
+                <TableCell>SP planejado</TableCell>
+                <TableCell>Turbo</TableCell>
+                <TableCell>SP efetivo</TableCell>
+                <TableCell>Status</TableCell>
+                <TableCell>Concluída em</TableCell>
                 <TableCell>Prazo</TableCell>
                 <TableCell>Início</TableCell>
                 <TableCell>Fim</TableCell>
@@ -236,15 +393,18 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
             <TableBody>
               {tasks.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={7}>Nenhuma tarefa cadastrada.</TableCell>
+                  <TableCell colSpan={10}>Nenhuma tarefa cadastrada.</TableCell>
                 </TableRow>
               )}
               {tasks.map((t) => (
                 <TableRow key={t.id} hover>
-                  <TableCell>{t.id}</TableCell>
                   <TableCell>{t.name}</TableCell>
                   <TableCell>{t.assigneeMemberName || '—'}</TableCell>
                   <TableCell>{t.storyPoints}</TableCell>
+                  <TableCell>{t.turboEnabled ? t.turboStoryPoints ?? '—' : 'Desativado'}</TableCell>
+                  <TableCell>{effectiveStoryPoints(t)}</TableCell>
+                  <TableCell>{t.status ?? '—'}</TableCell>
+                  <TableCell>{t.status === 'done' ? formatDateTimeBr(t.completedAt) : '—'}</TableCell>
                   <TableCell>{t.dueDate ? formatDateTimeBr(t.dueDate) : '—'}</TableCell>
                   <TableCell>{formatDateTimeBr(t.computedStartDate)}</TableCell>
                   <TableCell>{formatDateTimeBr(t.computedEndDate)}</TableCell>

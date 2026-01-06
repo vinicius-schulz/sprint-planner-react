@@ -7,7 +7,7 @@ import { formatMinutesToClock } from '../../domain/services/timeFormat';
 import type { TaskItem } from '../../domain/types';
 import styles from './ReportExportButton.module.css';
 
-type ReportExportButtonProps = {
+export type ReportExportButtonProps = {
   renderTrigger?: (exportReport: () => void) => ReactNode;
 };
 

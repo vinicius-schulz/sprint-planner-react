@@ -3,12 +3,13 @@ import { NavLink } from 'react-router-dom';
 import logo from '../assets/logo.svg';
 
 interface HeaderProps {
-  active: 'sprints' | 'plan' | 'acomp';
+  active: 'projects' | 'sprints' | 'plan' | 'acomp';
   followUpEnabled?: boolean;
   sprintId?: string;
+  projectId?: string;
 }
 
-export function Header({ active, followUpEnabled = true, sprintId }: HeaderProps) {
+export function Header({ active, followUpEnabled = true, sprintId, projectId }: HeaderProps) {
   return (
     <AppBar position="fixed" color="default" elevation={1}>
       <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
@@ -26,9 +27,18 @@ export function Header({ active, followUpEnabled = true, sprintId }: HeaderProps
         <Stack direction="row" spacing={1}>
           <Button
             component={NavLink}
-            to="/sprints"
+            to="/projects"
+            variant={active === 'projects' ? 'contained' : 'text'}
+            color="primary"
+          >
+            Projetos
+          </Button>
+          <Button
+            component={NavLink}
+            to={projectId ? `/projects/${projectId}/sprints` : '/projects'}
             variant={active === 'sprints' ? 'contained' : 'text'}
             color="primary"
+            disabled={!projectId}
           >
             Sprints
           </Button>

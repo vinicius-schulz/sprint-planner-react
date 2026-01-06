@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../app/hooks';
-import { getActiveSprintId } from '../app/sprintLibrary';
+import { getActiveSprintId, getActiveProjectId } from '../app/sprintLibrary';
 import { Header } from './Header';
 import { Content } from './Content';
 import { Footer } from './Footer';
@@ -40,12 +40,18 @@ export function Layout() {
   }, [location.pathname, navigate]);
 
   const sprintMatch = location.pathname.match(/^\/(plan|acomp)\/([^/]+)/);
+  const projectMatch = location.pathname.match(/^\/projects(?:\/([^/]+))?/);
   const sprintId = sprintMatch?.[2];
-  const active: 'sprints' | 'plan' | 'acomp' = sprintMatch ? (sprintMatch[1] as 'plan' | 'acomp') : 'sprints';
+  const projectId = projectMatch?.[1] || getActiveProjectId();
+  const active: 'projects' | 'sprints' | 'plan' | 'acomp' = sprintMatch
+    ? (sprintMatch[1] as 'plan' | 'acomp')
+    : location.pathname.startsWith('/projects')
+      ? (projectMatch?.[1] ? 'sprints' : 'projects')
+      : 'projects';
 
   return (
     <>
-      <Header active={active} followUpEnabled={planningStatus !== 'editing'} sprintId={sprintId} />
+      <Header active={active} followUpEnabled={planningStatus !== 'editing'} sprintId={sprintId} projectId={projectId} />
       <Content />
       <Footer />
     </>

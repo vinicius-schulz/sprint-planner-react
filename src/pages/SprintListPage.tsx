@@ -15,7 +15,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import LaunchIcon from '@mui/icons-material/Launch';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { createNewSprint, ensureActiveSprint, listSprintSummaries, removeSprint } from '../app/sprintLibrary';
 import { useAppDispatch } from '../app/hooks';
 import { hydrateStoreFromState } from '../app/sprintHydrator';
@@ -24,18 +24,23 @@ const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateStri
 
 export function SprintListPage() {
   const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
   const dispatch = useAppDispatch();
-  const [sprints, setSprints] = useState(() => listSprintSummaries());
+  const [sprints, setSprints] = useState(() => listSprintSummaries(projectId));
 
   const hasSprints = useMemo(() => sprints.length > 0, [sprints]);
 
-  const refresh = () => setSprints(listSprintSummaries());
+  const refresh = () => setSprints(listSprintSummaries(projectId));
 
   const handleCreate = () => {
+    if (!projectId) {
+      navigate('/projects');
+      return;
+    }
     const suggested = `Sprint ${sprints.length + 1}`;
     const input = window.prompt('Nome da nova sprint', suggested);
     const title = (input ?? suggested).trim();
-    const { id, state } = createNewSprint(title || suggested);
+    const { id, state } = createNewSprint(title || suggested, projectId);
     hydrateStoreFromState(dispatch, state);
     ensureActiveSprint(id);
     refresh();
@@ -57,12 +62,17 @@ export function SprintListPage() {
     refresh();
   };
 
+  if (!projectId) {
+    navigate('/projects');
+    return null;
+  }
+
   return (
     <Stack spacing={2} sx={{ mb: 2 }}>
       <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Typography variant="h4" sx={{ mb: 0 }}>Sprints</Typography>
-          <Typography variant="body2" color="text.secondary">Selecione ou crie uma sprint para planejar.</Typography>
+          <Typography variant="body2" color="text.secondary">Selecione ou crie uma sprint deste projeto.</Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
           Nova sprint

@@ -16,6 +16,7 @@ import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { useEnsureActiveSprint } from '../app/useEnsureActiveSprint';
+import { getActiveProjectId } from '../app/sprintLibrary';
 import { SprintTab } from '../features/sprint/SprintTab';
 import { EventsTab } from '../features/events/EventsTab';
 import { TeamTab } from '../features/members/TeamTab';
@@ -42,6 +43,7 @@ export function PlanningPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { sprintId } = useParams<{ sprintId: string }>();
+  const projectId = getActiveProjectId();
   const planningStatus = useAppSelector((state) => state.planningLifecycle.status);
   const planningLocked = planningStatus !== 'editing';
 
@@ -77,7 +79,7 @@ export function PlanningPage() {
     { label: 'Tarefas', element: <TasksTab /> },
     {
       label: 'Revisão',
-      element: <ReviewTab onSaved={() => (sprintId ? navigate(`/acomp/${sprintId}`) : navigate('/sprints'))} onEditStep={goToStepKey} />,
+      element: <ReviewTab onSaved={() => (sprintId ? navigate(`/acomp/${sprintId}`) : navigate(projectId ? `/projects/${projectId}/sprints` : '/projects'))} onEditStep={goToStepKey} />,
     },
   ];
 

@@ -21,11 +21,11 @@ import { EventsTab } from './features/events/EventsTab';
 import { TeamTab } from './features/members/TeamTab';
 import { TasksTab } from './features/tasks/TasksTab';
 import { SummaryBoard } from './components/SummaryBoard';
-import { GanttTimelineFrappe } from './components/GanttTimelineFrappe';
 import { NewSchedulePanel } from './components/NewSchedulePanel';
 import { ReportExportButton } from './components/ReportExport';
 import { ConfigTab } from './features/config/ConfigTab';
 import { ImportExportTab } from './features/importExport/ImportExportTab';
+import { FollowUpView } from './components/FollowUpView';
 import logo from './assets/logo.svg';
 
 function App() {
@@ -33,6 +33,7 @@ function App() {
   const [configOpen, setConfigOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
+  const [view, setView] = useState<'plan' | 'acomp'>('plan');
 
   const steps = useMemo(
     () => [
@@ -67,79 +68,119 @@ function App() {
               Calculadora de Capacidade Scrum
             </Typography>
           </Stack>
-          <Button variant="text" color="inherit" onClick={() => setConfigOpen(true)}>
-            Configurações
-          </Button>
-          <Button variant="text" color="inherit" onClick={() => setImportOpen(true)}>
-            Exportar / Importar
-          </Button>
-          <ReportExportButton
-            renderTrigger={(onExport) => (
-              <Button variant="contained" startIcon={<PictureAsPdfOutlinedIcon />} onClick={onExport}>
-                Exportar PDF
-              </Button>
-            )}
-          />
+          <Stack direction="row" spacing={1}>
+            <Button
+              variant={view === 'plan' ? 'contained' : 'text'}
+              color="primary"
+              onClick={() => setView('plan')}
+            >
+              Planejamento
+            </Button>
+            <Button
+              variant={view === 'acomp' ? 'contained' : 'text'}
+              color="primary"
+              onClick={() => setView('acomp')}
+            >
+              Acompanhamento
+            </Button>
+          </Stack>
         </Toolbar>
       </AppBar>
 
       <Toolbar />
       <Container className="appContainer" maxWidth="lg" sx={{ pt: 2 }}>
-        <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-          <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
-            Planejamento de sprint
-          </Typography>
-          <Button variant="contained" onClick={startConfiguration}>
-            Iniciar configuração
-          </Button>
-        </Box>
-        <Box sx={{ mb: 2 }}>
-          <SummaryBoard />
-        </Box>
-        {/*<GanttTimeline />*/}
-        <GanttTimelineFrappe />
-      <Box sx={{ mt: 2, mb: 2 }}>
-        <Stepper activeStep={activeStep} nonLinear alternativeLabel>
-          {steps.map((step, index) => (
-            <Step key={step.label} completed={activeStep > index}>
-              <StepButton color="inherit" onClick={() => goToStep(index)}>
-                {step.label}
-              </StepButton>
-            </Step>
-          ))}
-        </Stepper>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-          <Button variant="outlined" onClick={() => goToStep(activeStep - 1)} disabled={activeStep === 0}>
-            Anterior
-          </Button>
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="contained"
-              onClick={() => goToStep(activeStep + 1)}
-              disabled={activeStep === steps.length - 1}
-            >
-              Próximo
-            </Button>
-          </Stack>
-        </Box>
-      </Box>
-      <Box sx={{ mt: 2 }}>
-        {steps[activeStep]?.element}
-      </Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-          <Button variant="outlined" onClick={() => goToStep(activeStep - 1)} disabled={activeStep === 0}>
-            Anterior
-          </Button>
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="contained"
-              onClick={() => goToStep(activeStep + 1)}
-              disabled={activeStep === steps.length - 1}
-            >
-              Próximo
-            </Button>
-          </Stack>
-        </Box>
+        {view === 'plan' && (
+          <>
+            <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 1, gap: 2, flexWrap: 'wrap' }}>
+              <Box>
+                <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
+                  Planejamento de sprint
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Configure, edite e priorize tarefas.</Typography>
+              </Box>
+              <Stack direction="row" spacing={1} flexWrap="wrap">
+                <Button variant="outlined" onClick={() => setConfigOpen(true)}>Configurações</Button>
+                <Button variant="outlined" onClick={() => setImportOpen(true)}>Exportar / Importar</Button>
+                <ReportExportButton
+                  renderTrigger={(onExport) => (
+                    <Button variant="contained" startIcon={<PictureAsPdfOutlinedIcon />} onClick={onExport}>
+                      Exportar PDF
+                    </Button>
+                  )}
+                />
+                <Button variant="contained" onClick={startConfiguration}>
+                  Iniciar configuração
+                </Button>
+              </Stack>
+            </Box>
+            <Box sx={{ mb: 2 }}>
+              <SummaryBoard />
+            </Box>
+            <Box sx={{ mt: 2, mb: 2 }}>
+              <Stepper activeStep={activeStep} nonLinear alternativeLabel>
+                {steps.map((step, index) => (
+                  <Step key={step.label} completed={activeStep > index}>
+                    <StepButton color="inherit" onClick={() => goToStep(index)}>
+                      {step.label}
+                    </StepButton>
+                  </Step>
+                ))}
+              </Stepper>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+                <Button variant="outlined" onClick={() => goToStep(activeStep - 1)} disabled={activeStep === 0}>
+                  Anterior
+                </Button>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    variant="contained"
+                    onClick={() => goToStep(activeStep + 1)}
+                    disabled={activeStep === steps.length - 1}
+                  >
+                    Próximo
+                  </Button>
+                </Stack>
+              </Box>
+            </Box>
+            <Box sx={{ mt: 2 }}>
+              {steps[activeStep]?.element}
+            </Box>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+              <Button variant="outlined" onClick={() => goToStep(activeStep - 1)} disabled={activeStep === 0}>
+                Anterior
+              </Button>
+              <Stack direction="row" spacing={1}>
+                <Button
+                  variant="contained"
+                  onClick={() => goToStep(activeStep + 1)}
+                  disabled={activeStep === steps.length - 1}
+                >
+                  Próximo
+                </Button>
+              </Stack>
+            </Box>
+          </>
+        )}
+
+        {view === 'acomp' && (
+          <>
+            <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 2, gap: 2, flexWrap: 'wrap' }}>
+              <Box>
+                <Typography variant="h4" gutterBottom sx={{ mb: 0 }}>
+                  Acompanhamento
+                </Typography>
+                <Typography variant="body2" color="text.secondary">Visão diária com Gantt aberto e tarefas em leitura.</Typography>
+              </Box>
+              <ReportExportButton
+                renderTrigger={(onExport) => (
+                  <Button variant="contained" startIcon={<PictureAsPdfOutlinedIcon />} onClick={onExport}>
+                    Exportar PDF
+                  </Button>
+                )}
+              />
+            </Box>
+            <FollowUpView />
+          </>
+        )}
       </Container>
 
       <Dialog open={configOpen} onClose={() => setConfigOpen(false)} maxWidth="md" fullWidth>

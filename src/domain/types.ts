@@ -57,6 +57,8 @@ export interface TaskItem {
   turboStoryPoints?: number;
   turboEnabled?: boolean;
   dependencies: string[];
+  status?: 'todo' | 'doing' | 'done';
+  completedAt?: DateString;
   computedStartDate?: DateString;
   computedEndDate?: DateString;
   computedTimeline?: TaskWorkSegment[];

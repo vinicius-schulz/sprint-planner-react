@@ -6,6 +6,7 @@ import {
   Alert,
   Stack,
   Typography,
+  Box,
 } from '@mui/material';
 import Gantt from 'frappe-gantt';
 import './frappe-gantt.css';
@@ -18,6 +19,11 @@ import styles from './GanttTimelineFrappe.module.css';
 type ParsedTask = TaskItem & {
   start: Date;
   end: Date;
+};
+
+type GanttTimelineFrappeProps = {
+  inline?: boolean;
+  title?: string;
 };
 
 const parseDateTime = (value?: string): Date | null => {
@@ -53,7 +59,7 @@ const formatISODate = (value: Date) => {
 
 const taskManageEventName = 'task-manage-open';
 
-export function GanttTimelineFrappe() {
+export function GanttTimelineFrappe({ inline = false, title = 'Cronograma - Gantt' }: GanttTimelineFrappeProps) {
   const { tasks, errors } = useAppSelector(selectTaskSchedules);
   const containerRef = useRef<HTMLDivElement | null>(null);
 
@@ -185,41 +191,56 @@ export function GanttTimelineFrappe() {
     }
   }, [ganttData, styleText, todayIso]);
 
+  const content = (
+    <div className={styles.wrapper}>
+      {errors.length > 0 && (
+        <Alert severity="warning">Cronograma contém avisos: {errors.join(' | ')}</Alert>
+      )}
+      {bounds && (
+        <div className={styles.meta}>
+          <span>Início: {formatShort(bounds.minStart)}</span>
+          <span>Fim: {formatShort(bounds.maxEnd)}</span>
+          <span>Total: {Math.round((bounds.maxEnd.getTime() - bounds.minStart.getTime()) / 86_400_000)} dias</span>
+        </div>
+      )}
+      <div className={styles.legend}>
+        {[...colorByAssignee.entries()].map(([assignee, color], idx) => (
+          <span key={assignee} className={styles.legendItem}>
+            <span className={styles.legendSwatch} style={{ background: color }} />
+            {assignee} ({idx + 1})
+          </span>
+        ))}
+      </div>
+      <div className={styles.timeline}>
+        {ganttData.length === 0 ? (
+          <div className={styles.empty}>Nenhuma tarefa computada para a sprint.</div>
+        ) : (
+          <div ref={containerRef} />
+        )}
+      </div>
+    </div>
+  );
+
+  if (inline) {
+    return (
+      <Box sx={{ mt: 1 }}>
+        <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+          <Typography variant="h6">{title}</Typography>
+        </Stack>
+        {content}
+      </Box>
+    );
+  }
+
   return (
     <Accordion defaultExpanded={false} sx={{ mt: 1 }}>
       <AccordionSummary expandIcon={<ExpandMoreIcon />}>
         <Stack direction="row" spacing={1} alignItems="center">
-          <Typography variant="h6">Cronograma - Gantt</Typography>
+          <Typography variant="h6">{title}</Typography>
         </Stack>
       </AccordionSummary>
       <AccordionDetails>
-        <div className={styles.wrapper}>
-          {errors.length > 0 && (
-            <Alert severity="warning">Cronograma contém avisos: {errors.join(' | ')}</Alert>
-          )}
-          {bounds && (
-            <div className={styles.meta}>
-              <span>Início: {formatShort(bounds.minStart)}</span>
-              <span>Fim: {formatShort(bounds.maxEnd)}</span>
-              <span>Total: {Math.round((bounds.maxEnd.getTime() - bounds.minStart.getTime()) / 86_400_000)} dias</span>
-            </div>
-          )}
-          <div className={styles.legend}>
-            {[...colorByAssignee.entries()].map(([assignee, color], idx) => (
-              <span key={assignee} className={styles.legendItem}>
-                <span className={styles.legendSwatch} style={{ background: color }} />
-                {assignee} ({idx + 1})
-              </span>
-            ))}
-          </div>
-          <div className={styles.timeline}>
-            {ganttData.length === 0 ? (
-              <div className={styles.empty}>Nenhuma tarefa computada para a sprint.</div>
-            ) : (
-              <div ref={containerRef} />
-            )}
-          </div>
-        </div>
+        {content}
       </AccordionDetails>
     </Accordion>
   );

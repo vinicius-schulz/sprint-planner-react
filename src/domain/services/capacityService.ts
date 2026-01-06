@@ -338,66 +338,103 @@ export const computeTaskSchedules = (
     return a.id.localeCompare(b.id);
   };
 
-  const compareId = (a: TaskItem, b: TaskItem) => compareTask(a, b);
-  const queue: TaskItem[] = [];
-  cleanedTasks.forEach((t) => {
-    if ((indegree.get(t.id) ?? 0) === 0) queue.push(t);
-  });
-  queue.sort(compareId);
-
-  const ordered: TaskItem[] = [];
-  while (queue.length) {
-    const current = queue.shift()!;
-    ordered.push(current);
-    cleanedTasks.forEach((t) => {
-      if (!t.dependencies?.includes(current.id)) return;
-      const val = (indegree.get(t.id) ?? 0) - 1;
-      indegree.set(t.id, val);
-      if (val === 0) {
-        queue.push(t);
-        queue.sort(compareId);
-      }
-    });
-  }
-
-  if (ordered.length !== cleanedTasks.length) {
-    const cyclic = cleanedTasks.filter((t) => !ordered.includes(t)).map((t) => t.id).join(', ');
-    errors.push(`Dependências cíclicas ou inválidas entre: ${cyclic || 'tarefas'}.`);
-  }
-  const resultTasks: TaskItem[] = [];
-
-  ordered.forEach((task) => {
+  const computeEarliestPointer = (task: TaskItem) => {
     const deps = task.dependencies || [];
-    const durationMin = durationMinutesForTask(task);
-    const timeline: TaskWorkSegment[] = [];
-    if (durationMin === 0) {
-      const formatted = formatDateTime(sprint.startDate, '00:00');
-      resultTasks.push({ ...task, computedStartDate: formatted, computedEndDate: formatted, computedTimeline: timeline });
-      return;
-    }
-
-    if (deps.includes(task.id)) {
-      errors.push(`Tarefa ${task.id} não pode depender de si mesma.`);
-      return;
-    }
-
     let earliestPointer = { dayIndex: 0, minuteOffset: 0 };
 
     deps.forEach((depId) => {
       const dep = completed.get(depId);
-      if (!dep) return; // already reported missing or cycle; skip shift
+      if (!dep) return;
       if (dep.dayIndex > earliestPointer.dayIndex || (dep.dayIndex === earliestPointer.dayIndex && dep.minuteOffset > earliestPointer.minuteOffset)) {
         earliestPointer = { ...dep };
       }
     });
 
-    const assignee = task.assigneeMemberName ? memberByName.get(task.assigneeMemberName) : undefined;
     const assigneeLast = task.assigneeMemberName ? lastEndByAssignee.get(task.assigneeMemberName) : undefined;
     if (assigneeLast) {
       if (assigneeLast.dayIndex > earliestPointer.dayIndex || (assigneeLast.dayIndex === earliestPointer.dayIndex && assigneeLast.minuteOffset > earliestPointer.minuteOffset)) {
         earliestPointer = { ...assigneeLast };
       }
     }
+
+    return earliestPointer;
+  };
+
+  const compareReadyTasks = (a: TaskItem, b: TaskItem, unlockedById?: string) => {
+    if (unlockedById) {
+      const aUnlockedByCurrent = (a.dependencies ?? []).includes(unlockedById);
+      const bUnlockedByCurrent = (b.dependencies ?? []).includes(unlockedById);
+      if (aUnlockedByCurrent !== bUnlockedByCurrent) return aUnlockedByCurrent ? -1 : 1;
+    }
+
+    // Prefer tasks that were blocked (have deps) once they become ready,
+    // so they run as close as possible to their blockers.
+    const aHasDeps = (a.dependencies?.length ?? 0) > 0;
+    const bHasDeps = (b.dependencies?.length ?? 0) > 0;
+    if (aHasDeps !== bHasDeps) return aHasDeps ? -1 : 1;
+
+    const pa = computeEarliestPointer(a);
+    const pb = computeEarliestPointer(b);
+    if (pa.dayIndex !== pb.dayIndex) return pa.dayIndex - pb.dayIndex;
+    if (pa.minuteOffset !== pb.minuteOffset) return pa.minuteOffset - pb.minuteOffset;
+
+    const byStrategy = compareTask(a, b);
+    if (byStrategy !== 0) return byStrategy;
+
+    return a.id.localeCompare(b.id);
+  };
+  const dependentsByDep = new Map<string, TaskItem[]>();
+  cleanedTasks.forEach((t) => {
+    (t.dependencies ?? []).forEach((depId) => {
+      if (!taskMap.has(depId)) return;
+      const list = dependentsByDep.get(depId) ?? [];
+      list.push(t);
+      dependentsByDep.set(depId, list);
+    });
+  });
+
+  const ready: TaskItem[] = [];
+  cleanedTasks.forEach((t) => {
+    if ((indegree.get(t.id) ?? 0) === 0) ready.push(t);
+  });
+
+  let lastCompletedTaskId: string | undefined;
+  const resultTasks: TaskItem[] = [];
+  const scheduledIds = new Set<string>();
+
+  while (ready.length) {
+    ready.sort((a, b) => compareReadyTasks(a, b, lastCompletedTaskId));
+    const task = ready.shift()!;
+
+    if (scheduledIds.has(task.id)) continue;
+
+    const deps = task.dependencies || [];
+    const durationMin = durationMinutesForTask(task);
+    const timeline: TaskWorkSegment[] = [];
+    if (durationMin === 0) {
+      const formatted = formatDateTime(sprint.startDate, '00:00');
+      resultTasks.push({ ...task, computedStartDate: formatted, computedEndDate: formatted, computedTimeline: timeline });
+      completed.set(task.id, { dayIndex: 0, minuteOffset: 0 });
+      scheduledIds.add(task.id);
+      lastCompletedTaskId = task.id;
+
+      const dependents = dependentsByDep.get(task.id) ?? [];
+      dependents.forEach((dep) => {
+        const val = (indegree.get(dep.id) ?? 0) - 1;
+        indegree.set(dep.id, val);
+        if (val === 0) ready.push(dep);
+      });
+      continue;
+    }
+
+    if (deps.includes(task.id)) {
+      errors.push(`Tarefa ${task.id} não pode depender de si mesma.`);
+      continue;
+    }
+
+    let earliestPointer = computeEarliestPointer(task);
+
+    const assignee = task.assigneeMemberName ? memberByName.get(task.assigneeMemberName) : undefined;
 
     let remaining = durationMin;
     let currentDay = earliestPointer.dayIndex;
@@ -469,7 +506,7 @@ export const computeTaskSchedules = (
       if (remaining > 0) currentDay += 1;
     }
 
-    if (remaining > 0 || !startStamp || !endStamp) return;
+    if (remaining > 0 || !startStamp || !endStamp) continue;
 
     const startDay = workingDaySchedules[startStamp.dayIndex];
     const endDay = workingDaySchedules[endStamp.dayIndex];
@@ -477,9 +514,19 @@ export const computeTaskSchedules = (
     const endClock = offsetToClock(endDay.periods, endStamp.minuteOffset);
 
     completed.set(task.id, endStamp);
+    scheduledIds.add(task.id);
     if (task.assigneeMemberName) {
       lastEndByAssignee.set(task.assigneeMemberName, endStamp);
     }
+
+    lastCompletedTaskId = task.id;
+
+    const dependents = dependentsByDep.get(task.id) ?? [];
+    dependents.forEach((dep) => {
+      const val = (indegree.get(dep.id) ?? 0) - 1;
+      indegree.set(dep.id, val);
+      if (val === 0) ready.push(dep);
+    });
 
     resultTasks.push({
       ...task,
@@ -487,7 +534,12 @@ export const computeTaskSchedules = (
       computedEndDate: formatDateTime(endDay.date, endClock),
       computedTimeline: timeline,
     });
-  });
+  }
+
+  if (scheduledIds.size !== cleanedTasks.length) {
+    const cyclic = cleanedTasks.filter((t) => !scheduledIds.has(t.id)).map((t) => t.id).join(', ');
+    errors.push(`Dependências cíclicas ou inválidas entre: ${cyclic || 'tarefas'}.`);
+  }
 
   return { tasks: resultTasks, errors };
 };

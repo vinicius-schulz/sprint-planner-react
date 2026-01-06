@@ -23,8 +23,11 @@ import { GanttTimelineFrappe } from '../../components/GanttTimelineFrappe';
 import { closePlanning } from './planningLifecycleSlice';
 import type { TaskItem } from '../../domain/types';
 
+export type PlanningStepKey = 'sprint' | 'events' | 'team' | 'tasks' | 'review';
+
 type ReviewTabProps = {
   onSaved: () => void;
+  onEditStep?: (step: PlanningStepKey) => void;
 };
 
 const formatDateTimeBr = (value?: string) => {
@@ -58,7 +61,7 @@ const isAfterSprint = (task: TaskItem, sprintEnd?: string) => {
   return false;
 };
 
-export function ReviewTab({ onSaved }: ReviewTabProps) {
+export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
   const dispatch = useAppDispatch();
   const sprint = useAppSelector((state) => state.sprint);
   const calendar = useAppSelector((state) => state.calendar);
@@ -209,7 +212,14 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
 
       <Card>
         <CardContent>
-          <Typography variant="subtitle1" gutterBottom>Alertas</Typography>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+            <Typography variant="subtitle1">Alertas</Typography>
+            {onEditStep && (
+              <Button variant="outlined" size="small" onClick={() => onEditStep('tasks')}>
+                Ajustar tarefas
+              </Button>
+            )}
+          </Stack>
 
           {schedule.errors.length > 0 && (
             <Alert severity="warning" sx={{ mb: 1 }}>
@@ -238,7 +248,14 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
 
       <Card>
         <CardContent>
-          <Typography variant="subtitle1" gutterBottom>Resumo do planejamento</Typography>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+            <Typography variant="subtitle1">Resumo do planejamento</Typography>
+            {onEditStep && (
+              <Button variant="outlined" size="small" onClick={() => onEditStep('sprint')}>
+                Ajustar sprint
+              </Button>
+            )}
+          </Stack>
           <Stack spacing={2}>
             <Stack spacing={1}>
               <Typography variant="body2">Título da sprint: {sprint.title || '—'}</Typography>
@@ -278,7 +295,14 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
 
       <Card>
         <CardContent>
-          <Typography variant="subtitle1" gutterBottom>Calendário (dias da sprint)</Typography>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+            <Typography variant="subtitle1">Calendário (dias da sprint)</Typography>
+            {onEditStep && (
+              <Button variant="outlined" size="small" onClick={() => onEditStep('sprint')}>
+                Ajustar calendário
+              </Button>
+            )}
+          </Stack>
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -305,7 +329,14 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
 
       <Card>
         <CardContent>
-          <Typography variant="subtitle1" gutterBottom>Time</Typography>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+            <Typography variant="subtitle1">Time</Typography>
+            {onEditStep && (
+              <Button variant="outlined" size="small" onClick={() => onEditStep('team')}>
+                Ajustar time
+              </Button>
+            )}
+          </Stack>
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -340,7 +371,14 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
 
       <Card>
         <CardContent>
-          <Typography variant="subtitle1" gutterBottom>Eventos</Typography>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+            <Typography variant="subtitle1">Eventos</Typography>
+            {onEditStep && (
+              <Button variant="outlined" size="small" onClick={() => onEditStep('events')}>
+                Ajustar eventos
+              </Button>
+            )}
+          </Stack>
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -369,11 +407,28 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
         </CardContent>
       </Card>
 
-      <GanttTimelineFrappe inline title="Revisão - Gantt" />
+      <Stack spacing={1}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Typography variant="subtitle1">Gantt</Typography>
+          {onEditStep && (
+            <Button variant="outlined" size="small" onClick={() => onEditStep('tasks')}>
+              Ajustar tarefas
+            </Button>
+          )}
+        </Stack>
+        <GanttTimelineFrappe inline title="Revisão - Gantt" />
+      </Stack>
 
       <Card>
         <CardContent>
-          <Typography variant="subtitle1" gutterBottom>Tarefas (visão de revisão)</Typography>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
+            <Typography variant="subtitle1">Tarefas (visão de revisão)</Typography>
+            {onEditStep && (
+              <Button variant="outlined" size="small" onClick={() => onEditStep('tasks')}>
+                Ajustar tarefas
+              </Button>
+            )}
+          </Stack>
           <Divider sx={{ mb: 2 }} />
           <Table size="small">
             <TableHead>

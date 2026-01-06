@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Alert,
   Box,
@@ -25,6 +25,7 @@ import { ReportExportButton } from '../components/ReportExport';
 import { ConfigTab } from '../features/config/ConfigTab';
 import { ImportExportTab } from '../features/importExport/ImportExportTab';
 import { ReviewTab } from '../features/review/ReviewTab';
+import type { PlanningStepKey } from '../features/review/ReviewTab';
 import { reopenPlanning } from '../features/review/planningLifecycleSlice';
 import { resetFollowUpData } from '../features/tasks/tasksSlice';
 
@@ -41,23 +42,41 @@ export function PlanningPage() {
   const location = useLocation();
   const planningClosed = useAppSelector((state) => state.planningLifecycle.status === 'closed');
 
-  const steps = useMemo(
-    () => [
-      { label: 'Sprint', element: <SprintTab /> },
-      { label: 'Eventos', element: <EventsTab /> },
-      { label: 'Time', element: <TeamTab /> },
-      { label: 'Tarefas', element: <TasksTab /> },
-      {
-        label: 'Revisão',
-        element: <ReviewTab onSaved={() => navigate('/acomp')} />,
-      },
-    ],
-    [navigate],
-  );
-
-  const goToStep = (index: number) => {
+  function goToStep(index: number) {
     setActiveStep(Math.max(0, Math.min(index, steps.length - 1)));
-  };
+  }
+
+  function goToStepKey(step: PlanningStepKey) {
+    switch (step) {
+      case 'sprint':
+        goToStep(0);
+        break;
+      case 'events':
+        goToStep(1);
+        break;
+      case 'team':
+        goToStep(2);
+        break;
+      case 'tasks':
+        goToStep(3);
+        break;
+      case 'review':
+      default:
+        goToStep(4);
+        break;
+    }
+  }
+
+  const steps = [
+    { label: 'Sprint', element: <SprintTab /> },
+    { label: 'Eventos', element: <EventsTab /> },
+    { label: 'Time', element: <TeamTab /> },
+    { label: 'Tarefas', element: <TasksTab /> },
+    {
+      label: 'Revisão',
+      element: <ReviewTab onSaved={() => navigate('/acomp')} onEditStep={goToStepKey} />,
+    },
+  ];
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);

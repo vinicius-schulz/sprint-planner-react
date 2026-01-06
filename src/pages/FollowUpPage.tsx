@@ -1,11 +1,14 @@
 import { Alert, Box, Button, Card, CardContent, Stack, Typography } from '@mui/material';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useAppSelector } from '../app/hooks';
 import { ReportExportButton } from '../components/ReportExport';
 import { FollowUpView } from '../components/FollowUpView';
+import { useEnsureActiveSprint } from '../app/useEnsureActiveSprint';
 
 export function FollowUpPage() {
+  useEnsureActiveSprint();
   const navigate = useNavigate();
+  const { sprintId } = useParams<{ sprintId: string }>();
   const planningClosed = useAppSelector((state) => state.planningLifecycle.status === 'closed');
 
   if (!planningClosed) {
@@ -25,7 +28,8 @@ export function FollowUpPage() {
               <Alert severity="info">O acompanhamento só fica disponível após o fechamento do planejamento.</Alert>
               <Button
                 variant="contained"
-                onClick={() => navigate('/plan?step=review')}
+                disabled={!sprintId}
+                onClick={() => sprintId && navigate(`/plan/${sprintId}?step=review`)}
               >
                 Ir para revisão e fechar planejamento
               </Button>

@@ -4,7 +4,8 @@ import { Provider } from 'react-redux';
 import { ThemeProvider, CssBaseline, createTheme } from '@mui/material';
 import './index.css';
 import App from './App.tsx';
-import { store } from './app/store';
+import { createAppStore } from './app/store';
+import { ensureActiveSprint } from './app/sprintLibrary';
 
 const theme = createTheme({
   palette: {
@@ -20,6 +21,11 @@ const theme = createTheme({
     },
   },
 });
+
+const pathMatch = window.location.pathname.match(/^\/(?:plan|acomp)\/([^/]+)/);
+const requestedSprintId = pathMatch?.[1];
+const { state: preloadedState } = ensureActiveSprint(requestedSprintId);
+const store = createAppStore(preloadedState);
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

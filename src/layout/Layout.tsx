@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAppSelector } from '../app/hooks';
+import { getActiveSprintId } from '../app/sprintLibrary';
 import { Header } from './Header';
 import { Content } from './Content';
 import { Footer } from './Footer';
@@ -17,10 +18,16 @@ export function Layout() {
     const onNavigateToPlanning = (event: Event) => {
       const custom = event as CustomEvent<{ taskId?: string }>; // from acompanhamento modal
       const taskId = custom.detail?.taskId;
+      const sprintMatch = location.pathname.match(/^\/(?:plan|acomp)\/([^/]+)/);
+      const sprintId = sprintMatch?.[1] || getActiveSprintId();
+      if (!sprintId) {
+        navigate('/sprints');
+        return;
+      }
       const params = new URLSearchParams();
       params.set('step', 'tasks');
       if (taskId) params.set('taskId', taskId);
-      navigate(`/plan?${params.toString()}`);
+      navigate(`/plan/${sprintId}?${params.toString()}`);
       window.setTimeout(() => {
         if (taskId) {
           window.dispatchEvent(new CustomEvent(taskManageEventName, { detail: { taskId } }));
@@ -30,13 +37,15 @@ export function Layout() {
 
     window.addEventListener(navigateToPlanningEventName, onNavigateToPlanning as EventListener);
     return () => window.removeEventListener(navigateToPlanningEventName, onNavigateToPlanning as EventListener);
-  }, [navigate]);
+  }, [location.pathname, navigate]);
 
-  const active = location.pathname.startsWith('/acomp') ? 'acomp' : 'plan';
+  const sprintMatch = location.pathname.match(/^\/(plan|acomp)\/([^/]+)/);
+  const sprintId = sprintMatch?.[2];
+  const active: 'sprints' | 'plan' | 'acomp' = sprintMatch ? (sprintMatch[1] as 'plan' | 'acomp') : 'sprints';
 
   return (
     <>
-      <Header active={active} followUpEnabled={planningClosed} />
+      <Header active={active} followUpEnabled={planningClosed} sprintId={sprintId} />
       <Content />
       <Footer />
     </>

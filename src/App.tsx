@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './App.css';
 import { FollowUpPage } from './pages/FollowUpPage';
 import { PlanningPage } from './pages/PlanningPage';
+import { SprintListPage } from './pages/SprintListPage';
 import { Layout } from './layout/Layout';
 
 function App() {
@@ -9,9 +10,12 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Layout />}>
-          <Route index element={<Navigate to="/plan" replace />} />
-          <Route path="plan" element={<PlanningPage />} />
-          <Route path="acomp" element={<FollowUpPage />} />
+          <Route index element={<Navigate to="/sprints" replace />} />
+          <Route path="sprints" element={<SprintListPage />} />
+          <Route path="plan" element={<Navigate to="/sprints" replace />} />
+          <Route path="plan/:sprintId" element={<PlanningPage />} />
+          <Route path="acomp" element={<Navigate to="/sprints" replace />} />
+          <Route path="acomp/:sprintId" element={<FollowUpPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

@@ -3,11 +3,12 @@ import { NavLink } from 'react-router-dom';
 import logo from '../assets/logo.svg';
 
 interface HeaderProps {
-  active: 'plan' | 'acomp';
+  active: 'sprints' | 'plan' | 'acomp';
   followUpEnabled?: boolean;
+  sprintId?: string;
 }
 
-export function Header({ active, followUpEnabled = true }: HeaderProps) {
+export function Header({ active, followUpEnabled = true, sprintId }: HeaderProps) {
   return (
     <AppBar position="fixed" color="default" elevation={1}>
       <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
@@ -25,20 +26,29 @@ export function Header({ active, followUpEnabled = true }: HeaderProps) {
         <Stack direction="row" spacing={1}>
           <Button
             component={NavLink}
-            to="/plan"
+            to="/sprints"
+            variant={active === 'sprints' ? 'contained' : 'text'}
+            color="primary"
+          >
+            Sprints
+          </Button>
+          <Button
+            component={NavLink}
+            to={sprintId ? `/plan/${sprintId}` : '/sprints'}
             variant={active === 'plan' ? 'contained' : 'text'}
             color="primary"
+            disabled={!sprintId}
           >
             Planejamento
           </Button>
           <Button
             component={NavLink}
-            to="/acomp"
+            to={sprintId ? `/acomp/${sprintId}` : '/sprints'}
             variant={active === 'acomp' ? 'contained' : 'text'}
             color="primary"
-            disabled={!followUpEnabled}
+            disabled={!followUpEnabled || !sprintId}
             onClick={(e) => {
-              if (!followUpEnabled) {
+              if (!followUpEnabled || !sprintId) {
                 e.preventDefault();
               }
             }}

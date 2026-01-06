@@ -1,4 +1,4 @@
-import { createSlice } from '@reduxjs/toolkit';
+import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
 import { INITIAL_PLANNING_LIFECYCLE_STATE } from '../../domain/constants';
 import type { PlanningLifecycleState } from '../../domain/types';
 
@@ -16,11 +16,14 @@ const planningLifecycleSlice = createSlice({
       state.status = 'editing';
       state.closedAt = undefined;
     },
+    setPlanningLifecycleState(_, action: PayloadAction<PlanningLifecycleState>) {
+      return action.payload;
+    },
     resetPlanningLifecycle() {
       return { ...INITIAL_PLANNING_LIFECYCLE_STATE };
     },
   },
 });
 
-export const { closePlanning, reopenPlanning, resetPlanningLifecycle } = planningLifecycleSlice.actions;
+export const { closePlanning, reopenPlanning, setPlanningLifecycleState, resetPlanningLifecycle } = planningLifecycleSlice.actions;
 export default planningLifecycleSlice.reducer;

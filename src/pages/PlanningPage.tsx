@@ -13,8 +13,9 @@ import {
   Typography,
 } from '@mui/material';
 import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
+import { useEnsureActiveSprint } from '../app/useEnsureActiveSprint';
 import { SprintTab } from '../features/sprint/SprintTab';
 import { EventsTab } from '../features/events/EventsTab';
 import { TeamTab } from '../features/members/TeamTab';
@@ -32,6 +33,7 @@ const taskManageEventName = 'task-manage-open';
 const navigateToPlanningEventName = 'navigate-to-planning';
 
 export function PlanningPage() {
+  useEnsureActiveSprint();
   const dispatch = useAppDispatch();
   const [activeStep, setActiveStep] = useState(0);
   const [configOpen, setConfigOpen] = useState(false);
@@ -39,6 +41,7 @@ export function PlanningPage() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { sprintId } = useParams<{ sprintId: string }>();
   const planningClosed = useAppSelector((state) => state.planningLifecycle.status === 'closed');
 
   function goToStep(index: number) {
@@ -73,7 +76,7 @@ export function PlanningPage() {
     { label: 'Tarefas', element: <TasksTab /> },
     {
       label: 'Revisão',
-      element: <ReviewTab onSaved={() => navigate('/acomp')} onEditStep={goToStepKey} />,
+      element: <ReviewTab onSaved={() => (sprintId ? navigate(`/acomp/${sprintId}`) : navigate('/sprints'))} onEditStep={goToStepKey} />,
     },
   ];
 

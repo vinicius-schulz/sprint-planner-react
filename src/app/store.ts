@@ -5,6 +5,7 @@ import eventsReducer from '../features/events/eventsSlice';
 import membersReducer from '../features/members/membersSlice';
 import tasksReducer from '../features/tasks/tasksSlice';
 import configReducer from '../features/config/configSlice';
+import planningLifecycleReducer from '../features/review/planningLifecycleSlice';
 import { loadState, saveState } from './persistence';
 import type { RootPersistedState } from '../domain/types';
 
@@ -18,6 +19,7 @@ export const store = configureStore({
     members: membersReducer,
     tasks: tasksReducer,
     config: configReducer,
+    planningLifecycle: planningLifecycleReducer,
   },
   preloadedState,
 });

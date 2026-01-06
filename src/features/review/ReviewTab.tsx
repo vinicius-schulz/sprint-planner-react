@@ -15,11 +15,12 @@ import {
   TableRow,
   Typography,
 } from '@mui/material';
-import { useAppSelector } from '../../app/hooks';
+import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { DEFAULT_CONFIG } from '../../domain/constants';
 import { selectTaskSchedules, selectTeamCapacity } from '../../domain/services/capacityService';
 import { savePlanningToExternalApi } from '../../domain/services/externalApiMock';
 import { GanttTimelineFrappe } from '../../components/GanttTimelineFrappe';
+import { closePlanning } from './planningLifecycleSlice';
 import type { TaskItem } from '../../domain/types';
 
 type ReviewTabProps = {
@@ -58,12 +59,15 @@ const isAfterSprint = (task: TaskItem, sprintEnd?: string) => {
 };
 
 export function ReviewTab({ onSaved }: ReviewTabProps) {
+  const dispatch = useAppDispatch();
   const sprint = useAppSelector((state) => state.sprint);
   const calendar = useAppSelector((state) => state.calendar);
   const config = useAppSelector((state) => state.config.value);
   const members = useAppSelector((state) => state.members.items);
   const events = useAppSelector((state) => state.events.items);
   const tasks = useAppSelector((state) => state.tasks.items);
+  const planningLifecycle = useAppSelector((state) => state.planningLifecycle);
+  const planningClosed = planningLifecycle.status === 'closed';
 
   const teamCapacity = useAppSelector(selectTeamCapacity);
   const schedule = useAppSelector(selectTaskSchedules);
@@ -104,6 +108,7 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
         : null;
 
   const overshootTasks = useMemo(() => tasks.filter((t) => isAfterSprint(t, sprint.endDate)), [tasks, sprint.endDate]);
+  const closedAtLabel = planningLifecycle.closedAt ? formatDateTimeBr(planningLifecycle.closedAt) : null;
 
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
@@ -115,7 +120,7 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
   const handleCloseToast = () => setToast((prev) => ({ ...prev, open: false }));
 
   const handleSave = async () => {
-    const confirmed = window.confirm('Salvar planejamento na API externa? (mock)');
+    const confirmed = window.confirm('Salvar planejamento na API externa (mock) e fechar edição? Após salvar, o planejamento ficará bloqueado até ser reaberto. Deseja continuar?');
     if (!confirmed) return;
 
     try {
@@ -131,6 +136,7 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
       });
       setToast({ open: true, message: result.message, severity: result.ok ? 'success' : 'error' });
       if (result.ok) {
+        dispatch(closePlanning());
         onSaved();
       }
     } catch (err) {
@@ -149,13 +155,22 @@ export function ReviewTab({ onSaved }: ReviewTabProps) {
             <Box>
               <Typography variant="h6">Revisão</Typography>
               <Typography variant="body2" color="text.secondary">
-                Revise o planejamento completo e confirme o envio para a API.
+                Revise o planejamento completo e confirme o planejamento.
               </Typography>
             </Box>
-            <Button variant="contained" onClick={handleSave} disabled={saving}>
-              {saving ? 'Salvando…' : 'Salvar na API'}
+            <Button
+              variant="contained"
+              onClick={handleSave}
+              disabled={saving || planningClosed}
+            >
+              {planningClosed ? 'Planejamento fechado' : saving ? 'Salvando…' : 'Salvar e fechar'}
             </Button>
           </Stack>
+          <Alert severity={planningClosed ? 'info' : 'warning'} sx={{ mt: 2 }}>
+            {planningClosed
+              ? `Planejamento fechado${closedAtLabel ? ` em ${closedAtLabel}` : ''}. Para editar novamente, reabra o planejamento.`
+              : 'Ao salvar, o planejamento será bloqueado para edição. Para editar novamente, será preciso reabrir o planejamento.'}
+          </Alert>
         </CardContent>
       </Card>
 

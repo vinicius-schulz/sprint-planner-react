@@ -9,12 +9,13 @@ import {
   Typography,
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { updateTask } from '../../features/tasks/tasksSlice';
+import { resetFollowUpData, updateTask } from '../../features/tasks/tasksSlice';
 import type { TaskItem } from '../../domain/types';
 import { formatMinutesToClock } from '../../domain/services/timeFormat';
 import { GanttTimelineFrappe } from '../GanttTimelineFrappe';
 import { TasksTable } from '../../features/tasks/components/TasksTable';
 import { TaskManageDialog } from '../../features/tasks/components/TaskManageDialog';
+import { reopenPlanning } from '../../features/review/planningLifecycleSlice';
 import styles from './FollowUpView.module.css';
 
 const formatDateTimeBr = (value?: string) => {
@@ -141,6 +142,15 @@ export function FollowUpView() {
     return tasks.find((t) => t.id === manageTask.id) ?? manageTask;
   }, [tasks, manageTask]);
 
+  const handleReopenAndNavigate = (taskId: string) => {
+    const confirmed = window.confirm('Para editar o planejamento é preciso reabrir. Ao reabrir, os dados do acompanhamento (status e conclusão) serão apagados. Deseja continuar?');
+    if (!confirmed) return;
+    dispatch(reopenPlanning());
+    dispatch(resetFollowUpData());
+    handleCloseManage();
+    window.setTimeout(() => dispatchNavigateToPlanning(taskId), 0);
+  };
+
   return (
     <div className={styles.wrapper}>
       <Card>
@@ -222,8 +232,7 @@ export function FollowUpView() {
         toDateTimeLocalValue={toDateTimeLocalValue}
         nowLocalIso={nowLocalIso}
         onNavigateToPlanning={(taskId) => {
-          handleCloseManage();
-          window.setTimeout(() => dispatchNavigateToPlanning(taskId), 0);
+          handleReopenAndNavigate(taskId);
         }}
       />
     </div>

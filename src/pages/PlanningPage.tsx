@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
+  Alert,
   Box,
   Button,
   Dialog,
@@ -13,6 +14,7 @@ import {
 } from '@mui/material';
 import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { SprintTab } from '../features/sprint/SprintTab';
 import { EventsTab } from '../features/events/EventsTab';
 import { TeamTab } from '../features/members/TeamTab';
@@ -23,17 +25,21 @@ import { ReportExportButton } from '../components/ReportExport';
 import { ConfigTab } from '../features/config/ConfigTab';
 import { ImportExportTab } from '../features/importExport/ImportExportTab';
 import { ReviewTab } from '../features/review/ReviewTab';
+import { reopenPlanning } from '../features/review/planningLifecycleSlice';
+import { resetFollowUpData } from '../features/tasks/tasksSlice';
 
 const taskManageEventName = 'task-manage-open';
 const navigateToPlanningEventName = 'navigate-to-planning';
 
 export function PlanningPage() {
+  const dispatch = useAppDispatch();
   const [activeStep, setActiveStep] = useState(0);
   const [configOpen, setConfigOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const planningClosed = useAppSelector((state) => state.planningLifecycle.status === 'closed');
 
   const steps = useMemo(
     () => [
@@ -59,6 +65,8 @@ export function PlanningPage() {
     const taskIdParam = params.get('taskId');
     if (stepParam === 'tasks') {
       goToStep(3);
+    } else if (stepParam === 'review') {
+      goToStep(steps.length - 1);
     }
     if (taskIdParam) {
       window.setTimeout(() => {
@@ -88,6 +96,13 @@ export function PlanningPage() {
     setScheduleOpen(true);
   };
 
+  const handleReopenPlanning = () => {
+    const confirmed = window.confirm('Reabrir o planejamento apagará os dados do acompanhamento (status e conclusão das tarefas). Deseja continuar?');
+    if (!confirmed) return;
+    dispatch(reopenPlanning());
+    dispatch(resetFollowUpData());
+  };
+
   return (
     <>
       <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 1, gap: 2, flexWrap: 'wrap' }}>
@@ -98,8 +113,8 @@ export function PlanningPage() {
           <Typography variant="body2" color="text.secondary">Configure, edite e priorize tarefas.</Typography>
         </Box>
         <Stack direction="row" spacing={1} flexWrap="wrap">
-          <Button variant="outlined" onClick={() => setConfigOpen(true)}>Configurações</Button>
-          <Button variant="outlined" onClick={() => setImportOpen(true)}>Exportar / Importar</Button>
+          <Button variant="outlined" onClick={() => setConfigOpen(true)} disabled={planningClosed}>Configurações</Button>
+          <Button variant="outlined" onClick={() => setImportOpen(true)} disabled={planningClosed}>Exportar / Importar</Button>
           <ReportExportButton
             renderTrigger={(onExport) => (
               <Button variant="contained" startIcon={<PictureAsPdfOutlinedIcon />} onClick={onExport}>
@@ -107,56 +122,78 @@ export function PlanningPage() {
               </Button>
             )}
           />
-          <Button variant="contained" onClick={startConfiguration}>
+          <Button variant="contained" onClick={startConfiguration} disabled={planningClosed}>
             Iniciar configuração
           </Button>
         </Stack>
       </Box>
-      <Box sx={{ mb: 2 }}>
-        <SummaryBoard />
-      </Box>
-      <Box sx={{ mt: 2, mb: 2 }}>
-        <Stepper activeStep={activeStep} nonLinear alternativeLabel>
-          {steps.map((step, index) => (
-            <Step key={step.label} completed={activeStep > index}>
-              <StepButton color="inherit" onClick={() => goToStep(index)}>
-                {step.label}
-              </StepButton>
-            </Step>
-          ))}
-        </Stepper>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-          <Button variant="outlined" onClick={() => goToStep(activeStep - 1)} disabled={activeStep === 0}>
-            Anterior
-          </Button>
-          <Stack direction="row" spacing={1}>
-            <Button
-              variant="contained"
-              onClick={() => goToStep(activeStep + 1)}
-              disabled={activeStep === steps.length - 1}
-            >
-              Próximo
-            </Button>
-          </Stack>
-        </Box>
-      </Box>
-      <Box sx={{ mt: 2 }}>
-        {steps[activeStep]?.element}
-      </Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-        <Button variant="outlined" onClick={() => goToStep(activeStep - 1)} disabled={activeStep === 0}>
-          Anterior
+      {planningClosed && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Planejamento fechado para edição. O acompanhamento está liberado; reabra o planejamento para fazer ajustes (dados do acompanhamento serão limpos ao reabrir).
+        </Alert>
+      )}
+  <Box sx={{ mb: 2 }}>
+    <SummaryBoard />
+  </Box>
+  <Box sx={{ mt: 2, mb: 2 }}>
+    <Stepper activeStep={activeStep} nonLinear alternativeLabel>
+      {steps.map((step, index) => (
+        <Step key={step.label} completed={activeStep > index}>
+          <StepButton color="inherit" onClick={() => goToStep(index)}>
+            {step.label}
+          </StepButton>
+        </Step>
+      ))}
+    </Stepper>
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+      <Button variant="outlined" onClick={() => goToStep(activeStep - 1)} disabled={activeStep === 0}>
+        Anterior
+      </Button>
+      <Stack direction="row" spacing={1}>
+        <Button
+          variant="contained"
+          onClick={() => goToStep(activeStep + 1)}
+          disabled={activeStep === steps.length - 1}
+        >
+          Próximo
         </Button>
-        <Stack direction="row" spacing={1}>
-          <Button
-            variant="contained"
-            onClick={() => goToStep(activeStep + 1)}
-            disabled={activeStep === steps.length - 1}
-          >
-            Próximo
-          </Button>
-        </Stack>
-      </Box>
+      </Stack>
+    </Box>
+  </Box>
+  {planningClosed && (
+    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, gap: 2, flexWrap: 'wrap' }}>
+      <Typography variant="body2" color="text.secondary">
+        Planejamento bloqueado para edição. Reabra o planejamento para modificar dados.
+      </Typography>
+      <Button variant="contained" onClick={handleReopenPlanning} color="secondary" size="small">
+        Reabrir planejamento
+      </Button>
+    </Box>
+  )}
+  <Box
+    sx={{
+      mt: 2,
+      opacity: planningClosed ? 0.55 : 1,
+      pointerEvents: planningClosed ? 'none' : 'auto',
+      userSelect: planningClosed ? 'none' : 'auto',
+    }}
+  >
+    {steps[activeStep]?.element}
+  </Box>
+  <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
+    <Button variant="outlined" onClick={() => goToStep(activeStep - 1)} disabled={activeStep === 0}>
+      Anterior
+    </Button>
+    <Stack direction="row" spacing={1}>
+      <Button
+        variant="contained"
+        onClick={() => goToStep(activeStep + 1)}
+        disabled={activeStep === steps.length - 1}
+      >
+        Próximo
+      </Button>
+    </Stack>
+  </Box>
 
       <Dialog open={configOpen} onClose={() => setConfigOpen(false)} maxWidth="md" fullWidth>
         <DialogTitle>Configurações (global)</DialogTitle>

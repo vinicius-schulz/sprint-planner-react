@@ -20,6 +20,7 @@ import { resetEvents } from '../../features/events/eventsSlice';
 import { resetMembers } from '../../features/members/membersSlice';
 import { replaceTasks, resetTasks } from '../../features/tasks/tasksSlice';
 import { resetConfig } from '../../features/config/configSlice';
+import { resetPlanningLifecycle } from '../../features/review/planningLifecycleSlice';
 import styles from './NewSchedulePanel.module.css';
 
 type NewSchedulePanelProps = {
@@ -50,6 +51,7 @@ export function NewSchedulePanel({ renderTrigger, openExternal, onCloseExternal,
   const handleCloseToast = () => setToast((prev) => ({ ...prev, open: false }));
 
   const handleNewSchedule = () => {
+    dispatch(resetPlanningLifecycle());
     dispatch(resetSprint());
     dispatch(resetCalendar());
 

@@ -20,6 +20,13 @@ export interface Sprint {
   endDate: DateString;
 }
 
+export type PlanningStatus = 'editing' | 'closed';
+
+export interface PlanningLifecycleState {
+  status: PlanningStatus;
+  closedAt?: DateString;
+}
+
 export interface CalendarState {
   nonWorkingDaysManual: DateString[];
   nonWorkingDaysRemoved: DateString[];
@@ -118,4 +125,5 @@ export interface RootPersistedState {
   members: { items: Member[] };
   tasks: { items: TaskItem[] };
   config: { value: GlobalConfig };
+  planningLifecycle: PlanningLifecycleState;
 }

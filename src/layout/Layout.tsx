@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useAppSelector } from '../app/hooks';
 import { Header } from './Header';
 import { Content } from './Content';
 import { Footer } from './Footer';
@@ -10,6 +11,7 @@ const navigateToPlanningEventName = 'navigate-to-planning';
 export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
+  const planningClosed = useAppSelector((state) => state.planningLifecycle.status === 'closed');
 
   useEffect(() => {
     const onNavigateToPlanning = (event: Event) => {
@@ -34,7 +36,7 @@ export function Layout() {
 
   return (
     <>
-      <Header active={active} />
+      <Header active={active} followUpEnabled={planningClosed} />
       <Content />
       <Footer />
     </>

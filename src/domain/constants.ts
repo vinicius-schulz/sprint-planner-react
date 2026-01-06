@@ -1,4 +1,4 @@
-import type { GlobalConfig, SprintState } from './types';
+import type { GlobalConfig, PlanningLifecycleState, SprintState } from './types';
 
 export const DEFAULT_CONFIG: GlobalConfig = {
   dailyWorkHours: 8,
@@ -20,4 +20,9 @@ export const EMPTY_SPRINT: SprintState = {
   title: 'Sprint sem título',
   startDate: '',
   endDate: '',
+};
+
+export const INITIAL_PLANNING_LIFECYCLE_STATE: PlanningLifecycleState = {
+  status: 'editing',
+  closedAt: undefined,
 };

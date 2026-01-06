@@ -4,9 +4,10 @@ import logo from '../assets/logo.svg';
 
 interface HeaderProps {
   active: 'plan' | 'acomp';
+  followUpEnabled?: boolean;
 }
 
-export function Header({ active }: HeaderProps) {
+export function Header({ active, followUpEnabled = true }: HeaderProps) {
   return (
     <AppBar position="fixed" color="default" elevation={1}>
       <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
@@ -35,6 +36,12 @@ export function Header({ active }: HeaderProps) {
             to="/acomp"
             variant={active === 'acomp' ? 'contained' : 'text'}
             color="primary"
+            disabled={!followUpEnabled}
+            onClick={(e) => {
+              if (!followUpEnabled) {
+                e.preventDefault();
+              }
+            }}
           >
             Acompanhamento
           </Button>

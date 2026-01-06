@@ -65,6 +65,13 @@ const tasksSlice = createSlice({
         task.assigneeMemberName === oldName ? { ...task, assigneeMemberName: newName } : task,
       );
     },
+    resetFollowUpData(state) {
+      state.items = state.items.map((task) => ({
+        ...task,
+        status: undefined,
+        completedAt: undefined,
+      }));
+    },
     setComputedTasks(state, action: PayloadAction<TaskItem[]>) {
       const byId = new Map(action.payload.map((t) => [t.id, t] as const));
       state.items = state.items.map((t) => {
@@ -91,5 +98,14 @@ const tasksSlice = createSlice({
   },
 });
 
-export const { addTask, removeTask, updateTask, replaceTasks, renameAssignee, setComputedTasks, resetTasks } = tasksSlice.actions;
+export const {
+  addTask,
+  removeTask,
+  updateTask,
+  replaceTasks,
+  renameAssignee,
+  resetFollowUpData,
+  setComputedTasks,
+  resetTasks,
+} = tasksSlice.actions;
 export default tasksSlice.reducer;

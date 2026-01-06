@@ -1,10 +1,11 @@
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { Button, Snackbar, Alert } from '@mui/material';
+import { Button } from '@mui/material';
 import { useAppSelector } from '../../app/hooks';
 import { selectWorkingCalendar } from '../../domain/services/capacityService';
 import { formatMinutesToClock } from '../../domain/services/timeFormat';
 import type { TaskItem } from '../../domain/types';
+import { AppSnackbar } from '../Toast';
 import styles from './ReportExportButton.module.css';
 
 export type ReportExportButtonProps = {
@@ -197,16 +198,13 @@ export function ReportExportButton({ renderTrigger }: ReportExportButtonProps) {
   return (
     <>
       {trigger}
-      <Snackbar
+      <AppSnackbar
         open={toast.open}
         autoHideDuration={3000}
         onClose={closeToast}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={closeToast} severity={toast.severity} sx={{ width: '100%' }}>
-          {toast.message}
-        </Alert>
-      </Snackbar>
+        severity={toast.severity}
+        message={toast.message}
+      />
     </>
   );
 }

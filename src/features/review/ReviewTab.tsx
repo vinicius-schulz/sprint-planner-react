@@ -6,7 +6,6 @@ import {
   Card,
   CardContent,
   Divider,
-  Snackbar,
   Stack,
   Table,
   TableBody,
@@ -20,6 +19,7 @@ import { DEFAULT_CONFIG } from '../../domain/constants';
 import { selectTaskSchedules, selectTeamCapacity } from '../../domain/services/capacityService';
 import { savePlanningToExternalApi } from '../../domain/services/externalApiMock';
 import { GanttTimelineFrappe } from '../../components/GanttTimelineFrappe';
+import { AppSnackbar } from '../../components/Toast';
 import { closePlanning } from './planningLifecycleSlice';
 import type { TaskItem } from '../../domain/types';
 
@@ -521,11 +521,13 @@ export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
         <GanttTimelineFrappe inline title="Revisão - Gantt" />
       </Stack>
 
-      <Snackbar open={toast.open} autoHideDuration={3500} onClose={handleCloseToast}>
-        <Alert onClose={handleCloseToast} severity={toast.severity} sx={{ width: '100%' }}>
-          {toast.message}
-        </Alert>
-      </Snackbar>
+      <AppSnackbar
+        open={toast.open}
+        autoHideDuration={3500}
+        severity={toast.severity}
+        message={toast.message}
+        onClose={handleCloseToast}
+      />
     </Stack>
   );
 }

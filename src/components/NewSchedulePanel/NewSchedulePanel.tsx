@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
-  Alert,
   Button,
   Checkbox,
   Dialog,
@@ -9,18 +8,18 @@ import {
   DialogContent,
   DialogTitle,
   FormControlLabel,
-  Snackbar,
   Stack,
   Typography,
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { resetSprint } from '../../features/sprint/sprintSlice';
 import { resetCalendar } from '../../features/calendar/calendarSlice';
 import { resetEvents } from '../../features/events/eventsSlice';
 import { resetMembers } from '../../features/members/membersSlice';
-import { replaceTasks, resetTasks } from '../../features/tasks/tasksSlice';
 import { resetConfig } from '../../features/config/configSlice';
+import { replaceTasks, resetTasks } from '../../features/tasks/tasksSlice';
+import { resetSprint } from '../../features/sprint/sprintSlice';
 import { resetPlanningLifecycle } from '../../features/review/planningLifecycleSlice';
+import { AppSnackbar } from '../Toast';
 import styles from './NewSchedulePanel.module.css';
 
 type NewSchedulePanelProps = {
@@ -157,16 +156,13 @@ export function NewSchedulePanel({ renderTrigger, openExternal, onCloseExternal,
         </DialogActions>
       </Dialog>
 
-      <Snackbar
+      <AppSnackbar
         open={toast.open}
         autoHideDuration={3000}
         onClose={handleCloseToast}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-      >
-        <Alert onClose={handleCloseToast} severity={toast.severity} sx={{ width: '100%' }}>
-          {toast.message}
-        </Alert>
-      </Snackbar>
+        severity={toast.severity}
+        message={toast.message}
+      />
     </>
   );
 }

@@ -39,6 +39,7 @@ import { computeTaskSchedules, selectTeamCapacity } from '../../domain/services/
 import type { TaskItem } from '../../domain/types';
 import type { SchedulingStrategy } from '../../domain/types';
 import { DEFAULT_CONFIG } from '../../domain/constants';
+import { formatMinutesToClock } from '../../domain/services/timeFormat';
 import { GanttTimelineFrappe } from '../../components/GanttTimelineFrappe';
 import styles from './TasksTab.module.css';
 
@@ -702,23 +703,16 @@ export function TasksTab() {
                         <div key={`${seg.date}-${seg.startTime}-${seg.endTime}-${idx}`}>
                           <ListItem alignItems="flex-start">
                             <ListItemText
-                              primary={`${formatDateTimeBr(`${seg.date} ${seg.startTime}`)} - ${seg.endTime} (${seg.minutes} min)`}
+                              primary={`${formatDateTimeBr(`${seg.date} ${seg.startTime}`)} - ${seg.endTime} (${formatMinutesToClock(seg.minutes)})`}
                               secondaryTypographyProps={{ component: 'div' }}
                               secondary={
                                 seg.detail ? (
                                   <div className={styles.infoDetailBlock}>
-                                    <Typography variant="body2">Períodos do dia: {seg.detail.periods.map((p) => `${p.start}-${p.end}`).join(', ')}</Typography>
-                                    <Typography variant="body2">
-                                      Capacidade do dia: {seg.detail.capacityMinutes} min (base {seg.detail.baseMinutes} - eventos {seg.detail.eventMinutes} - recorrentes {seg.detail.recurringMinutes})
+                                    <Typography component="div" variant="body2">
+                                      Nesta tarefa: {formatMinutesToClock(seg.minutes)} · Capacidade do dia: {formatMinutesToClock(seg.detail.capacityMinutes)}
                                     </Typography>
-                                    <Typography variant="body2">
-                                      Disponibilidade/fatores: {seg.detail.availabilityPercent}% × sen {seg.detail.seniorityFactor} × mat {seg.detail.maturityFactor}
-                                    </Typography>
-                                    <Typography variant="body2">
-                                      Uso antes desta tarefa: {seg.detail.usedBeforeMinutes} min
-                                    </Typography>
-                                    <Typography variant="body2">
-                                      Eventos: {seg.detail.events.length ? seg.detail.events.map((e) => `${e.label} (${e.minutes}m)`).join(', ') : 'Nenhum'}
+                                    <Typography component="div" variant="body2">
+                                      Eventos/recorrentes no dia: {formatMinutesToClock(seg.detail.eventMinutes + seg.detail.recurringMinutes)} · Períodos: {seg.detail.periods.map((p) => `${p.start}-${p.end}`).join(', ')}
                                     </Typography>
                                   </div>
                                 ) : undefined

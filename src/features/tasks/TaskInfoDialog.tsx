@@ -27,7 +27,6 @@ const formatPeriods = (periods: { start: string; end: string }[]) =>
 
 export function TaskInfoDialog({ open, task, onClose, formatDateTime, storyPointsPerHour }: Props) {
   const totalMinutes = task?.computedTimeline?.reduce((sum, seg) => sum + seg.minutes, 0) ?? 0;
-  const totalHours = totalMinutes / 60;
   const sp = task?.storyPoints ?? 0;
   const storyHours = storyPointsPerHour > 0 ? sp / storyPointsPerHour : 0;
   return (
@@ -44,7 +43,7 @@ export function TaskInfoDialog({ open, task, onClose, formatDateTime, storyPoint
             <Typography variant="body2" gutterBottom>Fim: {formatDateTime(task.computedEndDate)}</Typography>
             <Typography variant="body2">Story Points: {sp}</Typography>
             <Typography variant="body2" gutterBottom>
-              Total planejado: {formatHoursToClock(totalHours)} úteis ({formatMinutesToClock(totalMinutes)}) — equivalente a {formatHoursToClock(storyHours)} pela taxa de SP ({storyPointsPerHour} SP/h)
+              Total planejado: {formatMinutesToClock(totalMinutes)} úteis — equivalente a {formatHoursToClock(storyHours)} pela taxa de SP ({storyPointsPerHour} SP/h)
             </Typography>
 
             <Typography variant="subtitle2" gutterBottom>Plano por dia</Typography>
@@ -59,22 +58,16 @@ export function TaskInfoDialog({ open, task, onClose, formatDateTime, storyPoint
                   <div key={`${seg.date}-${seg.startTime}-${seg.endTime}-${idx}`}>
                     <ListItem alignItems="flex-start">
                       <ListItemText
-                        primary={`${formatDateTime(`${seg.date} ${seg.startTime}`)} - ${seg.endTime} (${seg.minutes} min)`}
+                        primary={`${formatDateTime(`${seg.date} ${seg.startTime}`)} - ${seg.endTime} (${formatMinutesToClock(seg.minutes)})`}
+                        secondaryTypographyProps={{ component: 'div' }}
                         secondary={
                           seg.detail ? (
                             <div className={styles.infoDetailBlock}>
-                              <Typography variant="body2">Períodos do dia: {formatPeriods(seg.detail.periods)}</Typography>
-                              <Typography variant="body2">
-                                Capacidade do dia: {seg.detail.capacityMinutes} min (base {seg.detail.baseMinutes} - eventos {seg.detail.eventMinutes} - recorrentes {seg.detail.recurringMinutes})
+                              <Typography component="div" variant="body2">
+                                Nesta tarefa: {formatMinutesToClock(seg.minutes)} · Capacidade do dia: {formatMinutesToClock(seg.detail.capacityMinutes)}
                               </Typography>
-                              <Typography variant="body2">
-                                Disponibilidade/fatores: {seg.detail.availabilityPercent}% × sen {seg.detail.seniorityFactor} × mat {seg.detail.maturityFactor}
-                              </Typography>
-                              <Typography variant="body2">
-                                Uso antes desta tarefa: {seg.detail.usedBeforeMinutes} min
-                              </Typography>
-                              <Typography variant="body2">
-                                Eventos: {seg.detail.events.length ? seg.detail.events.map((e) => `${e.label} (${e.minutes}m)`).join(', ') : 'Nenhum'}
+                              <Typography component="div" variant="body2">
+                                Eventos/recorrentes no dia: {formatMinutesToClock(seg.detail.eventMinutes + seg.detail.recurringMinutes)} · Períodos: {formatPeriods(seg.detail.periods)}
                               </Typography>
                             </div>
                           ) : undefined

@@ -26,6 +26,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { updateTask } from '../../features/tasks/tasksSlice';
 import type { TaskItem } from '../../domain/types';
+import { formatMinutesToClock } from '../../domain/services/timeFormat';
 import { GanttTimelineFrappe } from '../GanttTimelineFrappe';
 import styles from './FollowUpView.module.css';
 
@@ -87,15 +88,6 @@ const toDateTimeLocalValue = (value?: string): string => {
   return '';
 };
 
-const toDateOnlyValue = (value?: string): string => {
-  if (!value) return '';
-  const local = toDateTimeLocalValue(value);
-  if (local) return local.slice(0, 10);
-  const cleaned = value.replace('Z', '').trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return cleaned;
-  return '';
-};
-
 export function FollowUpView() {
   const dispatch = useAppDispatch();
   const tasks = useAppSelector((state) => state.tasks.items);
@@ -143,6 +135,7 @@ export function FollowUpView() {
   };
 
   const todayIso = useMemo(() => formatISODate(new Date()), []);
+  const nowLocalIso = useMemo(() => formatISOLocalDateTime(new Date()), []);
 
   const handleStatusChange = (task: TaskItem, nextStatus: 'todo' | 'doing' | 'done') => {
     const updates: Partial<Pick<TaskItem, 'status' | 'completedAt'>> = { status: nextStatus };
@@ -154,17 +147,6 @@ export function FollowUpView() {
 
   const handleCompletedAtChange = (task: TaskItem, nextDateTime: string) => {
     dispatch(updateTask({ id: task.id, updates: { completedAt: nextDateTime || undefined } }));
-  };
-
-  const handleCompletedAtDateOnlyChange = (task: TaskItem, nextDate: string) => {
-    if (!nextDate) {
-      dispatch(updateTask({ id: task.id, updates: { completedAt: undefined } }));
-      return;
-    }
-
-    const currentLocal = toDateTimeLocalValue(task.completedAt);
-    const timePart = currentLocal.match(/T(\d{2}:\d{2})$/)?.[1] ?? '00:00';
-    dispatch(updateTask({ id: task.id, updates: { completedAt: `${nextDate}T${timePart}` } }));
   };
 
   const manageTaskFromStore = useMemo(() => {
@@ -268,11 +250,11 @@ export function FollowUpView() {
                     <TableCell>
                       {(task.status ?? 'todo') === 'done' ? (
                         <TextField
-                          type="date"
+                          type="datetime-local"
                           size="small"
                           variant="standard"
-                          value={toDateOnlyValue(task.completedAt) || todayIso}
-                          onChange={(e) => handleCompletedAtDateOnlyChange(task, e.target.value)}
+                          value={toDateTimeLocalValue(task.completedAt) || `${todayIso}T00:00`}
+                          onChange={(e) => handleCompletedAtChange(task, e.target.value)}
                           InputLabelProps={{ shrink: true }}
                         />
                       ) : (
@@ -334,8 +316,7 @@ export function FollowUpView() {
                         size="small"
                         fullWidth
                         value={
-                          toDateTimeLocalValue(manageTaskFromStore.completedAt) ||
-                          formatISOLocalDateTime(new Date())
+                          toDateTimeLocalValue(manageTaskFromStore.completedAt) || nowLocalIso
                         }
                         onChange={(e) => handleCompletedAtChange(manageTaskFromStore, e.target.value)}
                         InputLabelProps={{ shrink: true }}
@@ -365,25 +346,18 @@ export function FollowUpView() {
                       <div key={`${seg.date}-${seg.startTime}-${seg.endTime}-${idx}`}>
                         <ListItem alignItems="flex-start">
                           <ListItemText
-                            primary={`${formatDateTimeBr(`${seg.date} ${seg.startTime}`)} - ${seg.endTime} (${seg.minutes} min)`}
+                            primary={`${formatDateTimeBr(`${seg.date} ${seg.startTime}`)} - ${seg.endTime} (${formatMinutesToClock(seg.minutes)})`}
                             secondaryTypographyProps={{ component: 'div' }}
                             secondary={
                               seg.detail ? (
-                                <>
-                                  <Typography component="div" variant="body2">Períodos do dia: {seg.detail.periods.map((p) => `${p.start}-${p.end}`).join(', ')}</Typography>
+                                <div>
                                   <Typography component="div" variant="body2">
-                                    Capacidade do dia: {seg.detail.capacityMinutes} min (base {seg.detail.baseMinutes} - eventos {seg.detail.eventMinutes} - recorrentes {seg.detail.recurringMinutes})
+                                    Nesta tarefa: {formatMinutesToClock(seg.minutes)} · Capacidade do dia: {formatMinutesToClock(seg.detail.capacityMinutes)}
                                   </Typography>
                                   <Typography component="div" variant="body2">
-                                    Disponibilidade/fatores: {seg.detail.availabilityPercent}% × sen {seg.detail.seniorityFactor} × mat {seg.detail.maturityFactor}
+                                    Eventos/recorrentes no dia: {formatMinutesToClock(seg.detail.eventMinutes + seg.detail.recurringMinutes)} · Períodos: {seg.detail.periods.map((p) => `${p.start}-${p.end}`).join(', ')}
                                   </Typography>
-                                  <Typography component="div" variant="body2">
-                                    Uso antes desta tarefa: {seg.detail.usedBeforeMinutes} min
-                                  </Typography>
-                                  <Typography component="div" variant="body2">
-                                    Eventos: {seg.detail.events.length ? seg.detail.events.map((e) => `${e.label} (${e.minutes}m)`).join(', ') : 'Nenhum'}
-                                  </Typography>
-                                </>
+                                </div>
                               ) : undefined
                             }
                           />

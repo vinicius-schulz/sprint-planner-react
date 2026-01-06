@@ -15,7 +15,10 @@ export function Layout() {
     const onNavigateToPlanning = (event: Event) => {
       const custom = event as CustomEvent<{ taskId?: string }>; // from acompanhamento modal
       const taskId = custom.detail?.taskId;
-      navigate('/plan', { state: taskId ? { taskId } : undefined });
+      const params = new URLSearchParams();
+      params.set('step', 'tasks');
+      if (taskId) params.set('taskId', taskId);
+      navigate(`/plan?${params.toString()}`);
       window.setTimeout(() => {
         if (taskId) {
           window.dispatchEvent(new CustomEvent(taskManageEventName, { detail: { taskId } }));

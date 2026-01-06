@@ -221,7 +221,10 @@ export function FollowUpView() {
         onCompletedAtChange={handleCompletedAtChange}
         toDateTimeLocalValue={toDateTimeLocalValue}
         nowLocalIso={nowLocalIso}
-        onNavigateToPlanning={dispatchNavigateToPlanning}
+        onNavigateToPlanning={(taskId) => {
+          handleCloseManage();
+          window.setTimeout(() => dispatchNavigateToPlanning(taskId), 0);
+        }}
       />
     </div>
   );

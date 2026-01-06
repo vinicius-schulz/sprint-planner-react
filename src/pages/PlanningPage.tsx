@@ -12,7 +12,7 @@ import {
   Typography,
 } from '@mui/material';
 import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { SprintTab } from '../features/sprint/SprintTab';
 import { EventsTab } from '../features/events/EventsTab';
 import { TeamTab } from '../features/members/TeamTab';
@@ -33,6 +33,7 @@ export function PlanningPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const steps = useMemo(
     () => [
@@ -51,6 +52,20 @@ export function PlanningPage() {
   const goToStep = (index: number) => {
     setActiveStep(Math.max(0, Math.min(index, steps.length - 1)));
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const stepParam = params.get('step');
+    const taskIdParam = params.get('taskId');
+    if (stepParam === 'tasks') {
+      goToStep(3);
+    }
+    if (taskIdParam) {
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent(taskManageEventName, { detail: { taskId: taskIdParam } }));
+      }, 0);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     const onNavigateToPlanning = (event: Event) => {

@@ -187,14 +187,14 @@ export function TaskManageDialog({
                         <TextField
                             label="Nome"
                             fullWidth
-                            value={manageDraft?.name ?? ''}
-                            onChange={(e) => onDraftChange?.(manageDraft ? { ...manageDraft, name: e.target.value } : manageDraft)}
+                            value={manageDraft.name}
+                            onChange={(e) => onDraftChange?.({ ...manageDraft, name: e.target.value })}
                         />
                         <TextField
                             select
                             label="Story Points"
-                            value={manageDraft?.storyPoints ?? storyPointScale[0]}
-                            onChange={(e) => onDraftChange?.(manageDraft ? { ...manageDraft, storyPoints: Number(e.target.value) } : manageDraft)}
+                            value={manageDraft.storyPoints}
+                            onChange={(e) => onDraftChange?.({ ...manageDraft, storyPoints: Number(e.target.value) })}
                         >
                             {storyPointScale.map((sp) => (
                                 <MenuItem key={sp} value={sp}>{sp}</MenuItem>
@@ -216,15 +216,15 @@ export function TaskManageDialog({
                         <TextField
                             label="Prazo"
                             type="date"
-                            value={manageDraft?.dueDate ?? ''}
-                            onChange={(e) => onDraftChange?.(manageDraft ? { ...manageDraft, dueDate: e.target.value || undefined } : manageDraft)}
+                            value={manageDraft.dueDate ?? ''}
+                            onChange={(e) => onDraftChange?.({ ...manageDraft, dueDate: e.target.value || undefined })}
                             InputLabelProps={{ shrink: true }}
                         />
                         <TextField
                             select
                             label="Responsável"
-                            value={manageDraft?.assigneeMemberName ?? ''}
-                            onChange={(e) => onDraftChange?.(manageDraft ? { ...manageDraft, assigneeMemberName: e.target.value || undefined } : manageDraft)}
+                            value={manageDraft.assigneeMemberName ?? ''}
+                            onChange={(e) => onDraftChange?.({ ...manageDraft, assigneeMemberName: e.target.value || undefined })}
                         >
                             <MenuItem value="">-- Sem responsável --</MenuItem>
                             {members.map((m) => (
@@ -235,8 +235,8 @@ export function TaskManageDialog({
                             multiple
                             options={dependencyOptions.filter((o) => o.value !== task?.id)}
                             getOptionLabel={(o) => o.label}
-                            value={dependencyOptions.filter((o) => (manageDraft?.dependencies ?? []).includes(o.value))}
-                            onChange={(_, newValue) => onDraftChange?.(manageDraft ? { ...manageDraft, dependencies: newValue.map((o) => o.value) } : manageDraft)}
+                            value={dependencyOptions.filter((o) => manageDraft.dependencies.includes(o.value))}
+                            onChange={(_, newValue) => onDraftChange?.({ ...manageDraft, dependencies: newValue.map((o) => o.value) })}
                             renderTags={(value, getTagProps) =>
                                 value.map((option, index) => (
                                     (() => {

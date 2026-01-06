@@ -70,7 +70,7 @@ export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
   const events = useAppSelector((state) => state.events.items);
   const tasks = useAppSelector((state) => state.tasks.items);
   const planningLifecycle = useAppSelector((state) => state.planningLifecycle);
-  const planningClosed = planningLifecycle.status === 'closed';
+  const planningLocked = planningLifecycle.status !== 'editing';
 
   const teamCapacity = useAppSelector(selectTeamCapacity);
   const schedule = useAppSelector(selectTaskSchedules);
@@ -220,13 +220,13 @@ export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
             <Button
               variant="contained"
               onClick={handleSave}
-              disabled={saving || planningClosed}
+              disabled={saving || planningLocked}
             >
-              {planningClosed ? 'Planejamento fechado' : saving ? 'Salvando…' : 'Salvar e fechar'}
+              {planningLocked ? 'Planejamento fechado' : saving ? 'Salvando…' : 'Salvar e liberar acompanhamento'}
             </Button>
           </Stack>
-          <Alert severity={planningClosed ? 'info' : 'warning'} sx={{ mt: 2 }}>
-            {planningClosed
+          <Alert severity={planningLocked ? 'info' : 'warning'} sx={{ mt: 2 }}>
+            {planningLocked
               ? `Planejamento fechado${closedAtLabel ? ` em ${closedAtLabel}` : ''}. Para editar novamente, reabra o planejamento.`
               : 'Ao salvar, o planejamento será bloqueado para edição. Para editar novamente, será preciso reabrir o planejamento.'}
           </Alert>

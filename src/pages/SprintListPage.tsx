@@ -97,10 +97,16 @@ export function SprintListPage() {
                     </Stack>
                   )}>
                     <ListItemText
+                      primaryTypographyProps={{ component: 'div' }}
+                      secondaryTypographyProps={{ component: 'div' }}
                       primary={
                         <Stack direction="row" spacing={1} alignItems="center">
                           <Typography variant="subtitle1">{sprint.title || 'Sprint sem título'}</Typography>
-                          <Chip size="small" label={sprint.status === 'closed' ? 'Fechada' : 'Em edição'} color={sprint.status === 'closed' ? 'success' : 'warning'} />
+                          <Chip
+                            size="small"
+                            label={sprint.status === 'closed' ? 'Fechada' : sprint.status === 'followup' ? 'Em acompanhamento' : 'Em edição'}
+                            color={sprint.status === 'closed' ? 'success' : sprint.status === 'followup' ? 'info' : 'warning'}
+                          />
                         </Stack>
                       }
                       secondary={

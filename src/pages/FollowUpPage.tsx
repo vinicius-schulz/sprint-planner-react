@@ -9,9 +9,9 @@ export function FollowUpPage() {
   useEnsureActiveSprint();
   const navigate = useNavigate();
   const { sprintId } = useParams<{ sprintId: string }>();
-  const planningClosed = useAppSelector((state) => state.planningLifecycle.status === 'closed');
+  const planningStatus = useAppSelector((state) => state.planningLifecycle.status);
 
-  if (!planningClosed) {
+  if (planningStatus === 'editing') {
     return (
       <>
         <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ mb: 2, gap: 2, flexWrap: 'wrap' }}>

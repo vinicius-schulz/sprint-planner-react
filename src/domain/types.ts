@@ -20,7 +20,7 @@ export interface Sprint {
   endDate: DateString;
 }
 
-export type PlanningStatus = 'editing' | 'closed';
+export type PlanningStatus = 'editing' | 'followup' | 'closed';
 
 export interface PlanningLifecycleState {
   status: PlanningStatus;

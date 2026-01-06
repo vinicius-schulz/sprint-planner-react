@@ -12,7 +12,7 @@ const navigateToPlanningEventName = 'navigate-to-planning';
 export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
-  const planningClosed = useAppSelector((state) => state.planningLifecycle.status === 'closed');
+  const planningStatus = useAppSelector((state) => state.planningLifecycle.status);
 
   useEffect(() => {
     const onNavigateToPlanning = (event: Event) => {
@@ -45,7 +45,7 @@ export function Layout() {
 
   return (
     <>
-      <Header active={active} followUpEnabled={planningClosed} sprintId={sprintId} />
+      <Header active={active} followUpEnabled={planningStatus !== 'editing'} sprintId={sprintId} />
       <Content />
       <Footer />
     </>

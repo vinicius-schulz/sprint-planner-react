@@ -9,7 +9,7 @@ const planningLifecycleSlice = createSlice({
   initialState,
   reducers: {
     closePlanning(state) {
-      state.status = 'closed';
+      state.status = 'followup';
       state.closedAt = new Date().toISOString();
     },
     reopenPlanning(state) {

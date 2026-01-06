@@ -42,7 +42,8 @@ export function PlanningPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { sprintId } = useParams<{ sprintId: string }>();
-  const planningClosed = useAppSelector((state) => state.planningLifecycle.status === 'closed');
+  const planningStatus = useAppSelector((state) => state.planningLifecycle.status);
+  const planningLocked = planningStatus !== 'editing';
 
   function goToStep(index: number) {
     setActiveStep(Math.max(0, Math.min(index, steps.length - 1)));
@@ -134,8 +135,8 @@ export function PlanningPage() {
           <Typography variant="body2" color="text.secondary">Configure, edite e priorize tarefas.</Typography>
         </Box>
         <Stack direction="row" spacing={1} flexWrap="wrap">
-          <Button variant="outlined" onClick={() => setConfigOpen(true)} disabled={planningClosed}>Configurações</Button>
-          <Button variant="outlined" onClick={() => setImportOpen(true)} disabled={planningClosed}>Exportar / Importar</Button>
+          <Button variant="outlined" onClick={() => setConfigOpen(true)} disabled={planningLocked}>Configurações</Button>
+          <Button variant="outlined" onClick={() => setImportOpen(true)} disabled={planningLocked}>Exportar / Importar</Button>
           <ReportExportButton
             renderTrigger={(onExport) => (
               <Button variant="contained" startIcon={<PictureAsPdfOutlinedIcon />} onClick={onExport}>
@@ -143,14 +144,14 @@ export function PlanningPage() {
               </Button>
             )}
           />
-          <Button variant="contained" onClick={startConfiguration} disabled={planningClosed}>
+          <Button variant="contained" onClick={startConfiguration} disabled={planningLocked}>
             Iniciar configuração
           </Button>
         </Stack>
       </Box>
-      {planningClosed && (
+      {planningLocked && (
         <Alert severity="info" sx={{ mb: 2 }}>
-          Planejamento fechado para edição. O acompanhamento está liberado; reabra o planejamento para fazer ajustes (dados do acompanhamento serão limpos ao reabrir).
+          Planejamento bloqueado para edição. O acompanhamento está liberado; reabra o planejamento para fazer ajustes (dados do acompanhamento serão limpos ao reabrir).
         </Alert>
       )}
   <Box sx={{ mb: 2 }}>
@@ -181,7 +182,7 @@ export function PlanningPage() {
       </Stack>
     </Box>
   </Box>
-  {planningClosed && (
+  {planningLocked && (
     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, gap: 2, flexWrap: 'wrap' }}>
       <Typography variant="body2" color="text.secondary">
         Planejamento bloqueado para edição. Reabra o planejamento para modificar dados.
@@ -194,9 +195,9 @@ export function PlanningPage() {
   <Box
     sx={{
       mt: 2,
-      opacity: planningClosed ? 0.55 : 1,
-      pointerEvents: planningClosed ? 'none' : 'auto',
-      userSelect: planningClosed ? 'none' : 'auto',
+      opacity: planningLocked ? 0.55 : 1,
+      pointerEvents: planningLocked ? 'none' : 'auto',
+      userSelect: planningLocked ? 'none' : 'auto',
     }}
   >
     {steps[activeStep]?.element}

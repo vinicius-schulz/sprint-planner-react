@@ -483,7 +483,7 @@ export function TasksTab() {
           <Alert key={err} severity="error" sx={{ mt: 1 }}>{err}</Alert>
         ))}
 
-        <GanttTimelineFrappe inline title="Planejamento - Gantt" />
+
 
         <div className={styles.list}>
           <Table size="small" className={styles.table}>
@@ -667,6 +667,7 @@ export function TasksTab() {
             </TableBody>
           </Table>
         </div>
+                <GanttTimelineFrappe inline title="Planejamento - Gantt" />
       </CardContent>
       <Dialog open={!!manageTask} onClose={handleCloseManage} maxWidth="md" fullWidth>
         <DialogTitle>Detalhes e edição da tarefa</DialogTitle>

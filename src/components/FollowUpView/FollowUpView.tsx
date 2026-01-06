@@ -54,6 +54,7 @@ const statusOptions: Array<{ value: 'todo' | 'doing' | 'done'; label: string }> 
 ];
 
 const taskManageEventName = 'task-manage-open';
+const navigateToPlanningEventName = 'navigate-to-planning';
 
 export function FollowUpView() {
   const tasks = useAppSelector((state) => state.tasks.items);
@@ -97,8 +98,8 @@ export function FollowUpView() {
     return () => window.removeEventListener(taskManageEventName, onOpenManage as EventListener);
   }, [tasks, handleOpenManage]);
 
-  const dispatchManageEvent = (taskId: string) => {
-    window.dispatchEvent(new CustomEvent(taskManageEventName, { detail: { taskId } }));
+  const dispatchNavigateToPlanning = (taskId: string) => {
+    window.dispatchEvent(new CustomEvent(navigateToPlanningEventName, { detail: { taskId } }));
   };
 
   return (
@@ -260,7 +261,7 @@ export function FollowUpView() {
         </DialogContent>
         {manageTask && (
           <Stack direction="row" spacing={1} sx={{ px: 3, py: 2, justifyContent: 'flex-end' }}>
-            <Button color="secondary" onClick={() => dispatchManageEvent(manageTask.id)}>
+            <Button color="secondary" onClick={() => dispatchNavigateToPlanning(manageTask.id)}>
               Abrir no planejamento
             </Button>
             <Button onClick={handleCloseManage}>Fechar</Button>

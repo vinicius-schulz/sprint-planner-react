@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AppBar,
   Box,
@@ -36,6 +36,9 @@ function App() {
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [view, setView] = useState<'plan' | 'acomp'>('plan');
 
+  const taskManageEventName = 'task-manage-open';
+  const navigateToPlanningEventName = 'navigate-to-planning';
+
   const steps = useMemo(
     () => [
       { label: 'Sprint', element: <SprintTab /> },
@@ -53,6 +56,25 @@ function App() {
   const goToStep = (index: number) => {
     setActiveStep(Math.max(0, Math.min(index, steps.length - 1)));
   };
+
+  useEffect(() => {
+    const onNavigateToPlanning = (event: Event) => {
+      const custom = event as CustomEvent<{ taskId?: string }>;
+      const taskId = custom.detail?.taskId;
+      if (!taskId) return;
+
+      setView('plan');
+      // Tasks step is currently index 3 (Sprint, Eventos, Time, Tarefas, Revisão)
+      goToStep(3);
+
+      window.setTimeout(() => {
+        window.dispatchEvent(new CustomEvent(taskManageEventName, { detail: { taskId } }));
+      }, 0);
+    };
+
+    window.addEventListener(navigateToPlanningEventName, onNavigateToPlanning as EventListener);
+    return () => window.removeEventListener(navigateToPlanningEventName, onNavigateToPlanning as EventListener);
+  }, [steps.length]);
 
   const startConfiguration = () => {
     setScheduleOpen(true);

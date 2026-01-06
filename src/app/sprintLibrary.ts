@@ -22,6 +22,7 @@ export interface ProjectMeta {
   startDate?: string;
   endDate?: string;
   description?: string;
+  status: 'draft' | 'active' | 'archived';
   updatedAt: string;
 }
 
@@ -81,6 +82,7 @@ const migrateLegacyState = (): SprintLibraryPayload => {
   const projectMeta: ProjectMeta = {
     id: projectId,
     name: 'Projeto Padrão',
+    status: 'active',
     updatedAt: new Date().toISOString(),
     startDate: legacyState.sprint.startDate,
     endDate: legacyState.sprint.endDate,
@@ -117,9 +119,18 @@ const readLibrary = (): SprintLibraryPayload => {
   const fromStorage = safeParse(localStorage.getItem(LIBRARY_KEY));
   if (fromStorage) {
     // ensure projects map exists for older payloads
+    const projects = Object.fromEntries(
+      Object.entries(fromStorage.projects ?? {}).map(([key, value]) => [
+        key,
+        {
+          ...value,
+          status: value.status ?? 'active',
+        },
+      ]),
+    );
     return {
       ...fromStorage,
-      projects: fromStorage.projects ?? {},
+      projects,
     } as SprintLibraryPayload;
   }
   return migrateLegacyState();
@@ -162,6 +173,7 @@ const ensureProjectExists = (library: SprintLibraryPayload, projectId?: string) 
   const project: ProjectMeta = {
     id: projectId,
     name: 'Projeto sem título',
+    status: 'active',
     updatedAt: new Date().toISOString(),
   };
   return {
@@ -292,7 +304,15 @@ export const getProjectMeta = (id?: string) => {
   return library.projects[id];
 };
 
-export const createProject = (name: string, startDate?: string, endDate?: string, description?: string) => {
+type ProjectInput = {
+  name: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  status?: ProjectMeta['status'];
+};
+
+export const createProject = ({ name, startDate, endDate, description, status }: ProjectInput) => {
   const library = readLibrary();
   const id = randomProjectId();
   const project: ProjectMeta = {
@@ -301,6 +321,7 @@ export const createProject = (name: string, startDate?: string, endDate?: string
     startDate,
     endDate,
     description,
+    status: status ?? 'active',
     updatedAt: new Date().toISOString(),
   };
   const updated: SprintLibraryPayload = {
@@ -317,7 +338,15 @@ export const updateProject = (project: ProjectMeta) => {
   if (!library.projects[project.id]) return;
   const updated: SprintLibraryPayload = {
     ...library,
-    projects: { ...library.projects, [project.id]: { ...project, updatedAt: new Date().toISOString() } },
+    projects: {
+      ...library.projects,
+      [project.id]: {
+        ...library.projects[project.id],
+        ...project,
+        status: project.status ?? library.projects[project.id].status ?? 'active',
+        updatedAt: new Date().toISOString(),
+      },
+    },
   };
   writeLibrary(updated);
 };

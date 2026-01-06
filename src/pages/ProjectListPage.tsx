@@ -16,7 +16,9 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import LaunchIcon from '@mui/icons-material/Launch';
 import { useNavigate } from 'react-router-dom';
-import { createProject, getActiveProjectId, listProjects, removeProject, setActiveProjectId } from '../app/sprintLibrary';
+import { ProjectModal } from '../components/ProjectModal';
+import type { ProjectModalData } from '../components/ProjectModal';
+import { createProject, getActiveProjectId, listProjects, removeProject, setActiveProjectId, updateProject } from '../app/sprintLibrary';
 
 const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString('pt-BR') : '');
 
@@ -24,17 +26,21 @@ export function ProjectListPage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState(() => listProjects());
   const activeProjectId = getActiveProjectId();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const editingProject = editingProjectId ? projects.find((p) => p.id === editingProjectId) : undefined;
 
   const hasProjects = useMemo(() => projects.length > 0, [projects]);
   const refresh = () => setProjects(listProjects());
 
-  const handleCreate = () => {
-    const suggested = `Projeto ${projects.length + 1}`;
-    const input = window.prompt('Nome do novo projeto', suggested) ?? '';
-    const name = input.trim() || suggested;
-    const project = createProject(name);
-    refresh();
-    navigate(`/projects/${project.id}/sprints`);
+  const handleOpenCreate = () => {
+    setEditingProjectId(null);
+    setIsModalOpen(true);
+  };
+
+  const handleOpenEdit = (id: string) => {
+    setEditingProjectId(id);
+    setIsModalOpen(true);
   };
 
   const handleOpen = (id: string) => {
@@ -51,6 +57,18 @@ export function ProjectListPage() {
     refresh();
   };
 
+  const handleSave = (data: ProjectModalData) => {
+    if (editingProjectId && editingProject) {
+      updateProject({ ...editingProject, ...data });
+    } else {
+      const project = createProject(data);
+      setActiveProjectId(project.id);
+      navigate(`/projects/${project.id}/sprints`);
+    }
+    refresh();
+    setIsModalOpen(false);
+  };
+
   return (
     <Stack spacing={2} sx={{ mb: 2 }}>
       <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ flexWrap: 'wrap', gap: 2 }}>
@@ -58,7 +76,7 @@ export function ProjectListPage() {
           <Typography variant="h4" sx={{ mb: 0 }}>Projetos</Typography>
           <Typography variant="body2" color="text.secondary">Organize sprints por projeto.</Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>
           Novo projeto
         </Button>
       </Box>
@@ -71,6 +89,13 @@ export function ProjectListPage() {
                 <Fragment key={project.id}>
                   <ListItem alignItems="flex-start" secondaryAction={(
                     <Stack direction="row" spacing={1}>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => handleOpenEdit(project.id)}
+                      >
+                        Editar
+                      </Button>
                       <Button
                         variant="outlined"
                         size="small"
@@ -99,6 +124,17 @@ export function ProjectListPage() {
                           {activeProjectId === project.id && (
                             <Chip size="small" color="primary" label="Selecionado" />
                           )}
+                          <Chip
+                            size="small"
+                            label={
+                              project.status === 'archived'
+                                ? 'Arquivado'
+                                : project.status === 'draft'
+                                  ? 'Rascunho'
+                                  : 'Ativo'
+                            }
+                            color={project.status === 'archived' ? 'default' : project.status === 'draft' ? 'warning' : 'success'}
+                          />
                         </Stack>
                       }
                       secondary={
@@ -120,13 +156,20 @@ export function ProjectListPage() {
           ) : (
             <Stack spacing={1} alignItems="flex-start">
               <Typography variant="body2" color="text.secondary">Nenhum projeto cadastrado.</Typography>
-              <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={handleOpenCreate}>
                 Criar primeiro projeto
               </Button>
             </Stack>
           )}
         </CardContent>
       </Card>
+
+      <ProjectModal
+        open={isModalOpen}
+        initialProject={editingProject}
+        onClose={() => setIsModalOpen(false)}
+        onSave={handleSave}
+      />
     </Stack>
   );
 }

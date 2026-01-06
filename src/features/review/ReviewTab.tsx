@@ -146,6 +146,25 @@ export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
   const overshootTasks = useMemo(() => tasks.filter((t) => isAfterSprint(t, sprint.endDate)), [tasks, sprint.endDate]);
   const closedAtLabel = planningLifecycle.closedAt ? formatDateTimeBr(planningLifecycle.closedAt) : null;
 
+  const hasWorkingDay = calendar.daySchedules.some((d) => !d.isNonWorking);
+  const sprintValid = Boolean(sprint.startDate && sprint.endDate && hasWorkingDay);
+  const teamValid = members.some((m) => (m.availabilityPercent ?? 0) > 0);
+  const tasksValid = tasks.length > 0 && tasks.every((t) => Boolean(t.assigneeMemberName));
+
+  const validationErrors = useMemo(() => {
+    const errors: string[] = [];
+    if (!sprintValid) errors.push('Defina a sprint com pelo menos um dia útil configurado.');
+    if (!teamValid) errors.push('Inclua pelo menos um integrante do time com disponibilidade maior que 0%.');
+    if (!tasksValid) errors.push('Cadastre pelo menos uma tarefa e atribua todas a um responsável.');
+    return errors;
+  }, [sprintValid, teamValid, tasksValid]);
+
+  const hasValidationErrors = validationErrors.length > 0;
+  const hasCriticalAlerts = hasValidationErrors
+    || schedule.errors.length > 0
+    || capacitySeverity === 'error'
+    || overshootTasks.length > 0;
+
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
     open: false,
@@ -156,6 +175,10 @@ export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
   const handleCloseToast = () => setToast((prev) => ({ ...prev, open: false }));
 
   const handleSave = async () => {
+    if (hasValidationErrors) {
+      setToast({ open: true, message: 'Corrija as pendências de validação antes de salvar.', severity: 'error' });
+      return;
+    }
     const confirmed = window.confirm('Salvar planejamento na API externa (mock) e fechar edição? Após salvar, o planejamento ficará bloqueado até ser reaberto. Deseja continuar?');
     if (!confirmed) return;
 
@@ -227,6 +250,12 @@ export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
             </Alert>
           )}
 
+          {hasValidationErrors && (
+            <Alert severity="error" sx={{ mb: 1 }}>
+              Pendências de validação: {validationErrors.join(' | ')}
+            </Alert>
+          )}
+
           {capacitySeverity && (
             <Alert severity={capacitySeverity === 'error' ? 'error' : 'warning'} sx={{ mb: 1 }}>
               Story Points planejados (efetivos) ({totalEffectiveStoryPoints}) excedem a capacidade da sprint ({capacityStoryPoints}).
@@ -240,8 +269,8 @@ export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
             </Alert>
           )}
 
-          {schedule.errors.length === 0 && !capacitySeverity && overshootTasks.length === 0 && (
-            <Alert severity="success">Nenhum alerta encontrado.</Alert>
+          {!hasCriticalAlerts && (
+            <Alert severity="success">Nenhum alerta crítico encontrado.</Alert>
           )}
         </CardContent>
       </Card>
@@ -256,6 +285,11 @@ export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
               </Button>
             )}
           </Stack>
+          {!sprintValid && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              Defina a sprint e garanta pelo menos um dia útil configurado.
+            </Alert>
+          )}
           <Stack spacing={2}>
             <Stack spacing={1}>
               <Typography variant="body2">Título da sprint: {sprint.title || '—'}</Typography>
@@ -303,6 +337,11 @@ export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
               </Button>
             )}
           </Stack>
+          {!sprintValid && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              Configure pelo menos um dia útil para a sprint.
+            </Alert>
+          )}
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -337,6 +376,11 @@ export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
               </Button>
             )}
           </Stack>
+          {!teamValid && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              Inclua ao menos um membro com disponibilidade maior que 0%.
+            </Alert>
+          )}
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -407,17 +451,7 @@ export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
         </CardContent>
       </Card>
 
-      <Stack spacing={1}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between">
-          <Typography variant="subtitle1">Gantt</Typography>
-          {onEditStep && (
-            <Button variant="outlined" size="small" onClick={() => onEditStep('tasks')}>
-              Ajustar tarefas
-            </Button>
-          )}
-        </Stack>
-        <GanttTimelineFrappe inline title="Revisão - Gantt" />
-      </Stack>
+
 
       <Card>
         <CardContent>
@@ -429,6 +463,11 @@ export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
               </Button>
             )}
           </Stack>
+          {!tasksValid && (
+            <Alert severity="error" sx={{ mb: 2 }}>
+              Cadastre pelo menos uma tarefa e atribua todas a um responsável.
+            </Alert>
+          )}
           <Divider sx={{ mb: 2 }} />
           <Table size="small">
             <TableHead>
@@ -469,6 +508,18 @@ export function ReviewTab({ onSaved, onEditStep }: ReviewTabProps) {
           </Table>
         </CardContent>
       </Card>
+
+      <Stack spacing={1}>
+        <Stack direction="row" alignItems="center" justifyContent="space-between">
+          <Typography variant="subtitle1">Gantt</Typography>
+          {onEditStep && (
+            <Button variant="outlined" size="small" onClick={() => onEditStep('tasks')}>
+              Ajustar tarefas
+            </Button>
+          )}
+        </Stack>
+        <GanttTimelineFrappe inline title="Revisão - Gantt" />
+      </Stack>
 
       <Snackbar open={toast.open} autoHideDuration={3500} onClose={handleCloseToast}>
         <Alert onClose={handleCloseToast} severity={toast.severity} sx={{ width: '100%' }}>

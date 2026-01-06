@@ -425,7 +425,7 @@ export function TasksTab() {
         onTabChange={setManageTab}
         onClose={handleCloseManage}
         onSave={handleManageSave}
-        onDraftChange={setManageDraft}
+        onDraftChange={(draft) => setManageDraft(draft ?? null)}
         onTurboChange={handleManageTurboChange}
         dependencyOptions={dependencyOptions}
         members={members.map((m) => ({ id: m.id, name: m.name }))}

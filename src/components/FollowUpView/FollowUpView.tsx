@@ -3,18 +3,10 @@ import {
   Box,
   Card,
   CardContent,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
   MenuItem,
   Stack,
   TextField,
   Typography,
-  Button,
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { updateTask } from '../../features/tasks/tasksSlice';
@@ -22,6 +14,7 @@ import type { TaskItem } from '../../domain/types';
 import { formatMinutesToClock } from '../../domain/services/timeFormat';
 import { GanttTimelineFrappe } from '../GanttTimelineFrappe';
 import { TasksTable } from '../../features/tasks/components/TasksTable';
+import { TaskManageDialog } from '../../features/tasks/components/TaskManageDialog';
 import styles from './FollowUpView.module.css';
 
 const formatDateTimeBr = (value?: string) => {
@@ -148,8 +141,6 @@ export function FollowUpView() {
     return tasks.find((t) => t.id === manageTask.id) ?? manageTask;
   }, [tasks, manageTask]);
 
-  const manageTimelineFromStore = manageTaskFromStore?.computedTimeline ?? [];
-
   return (
     <div className={styles.wrapper}>
       <Card>
@@ -215,109 +206,23 @@ export function FollowUpView() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!manageTask} onClose={handleCloseManage} maxWidth="md" fullWidth>
-        <DialogTitle>Detalhes da tarefa</DialogTitle>
-        <DialogContent dividers>
-          <Box display="flex" flexDirection="column" gap={1}>
-            {!manageTask && <Typography variant="body2">Nenhuma tarefa selecionada.</Typography>}
-            {manageTaskFromStore && (
-              <>
-                <Typography variant="subtitle1" gutterBottom>{manageTaskFromStore.name}</Typography>
-                <Typography variant="body2">ID: {manageTaskFromStore.id}</Typography>
-                <Typography variant="body2">Responsável: {manageTaskFromStore.assigneeMemberName || '—'}</Typography>
-                <Typography variant="body2">Prazo: {manageTaskFromStore.dueDate ?? '—'}</Typography>
-                <Typography variant="body2">Início: {formatDateTimeBr(manageTaskFromStore.computedStartDate)}</Typography>
-                <Typography variant="body2" gutterBottom>Fim: {formatDateTimeBr(manageTaskFromStore.computedEndDate)}</Typography>
-                <Typography variant="body2">Story Points: {manageTaskFromStore.storyPoints}</Typography>
-
-                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} sx={{ mt: 1 }}>
-                  <Box sx={{ minWidth: 220 }}>
-                    <TextField
-                      label="Status"
-                      select
-                      size="small"
-                      fullWidth
-                      value={(manageTaskFromStore.status ?? 'todo')}
-                      onChange={(e) => handleStatusChange(manageTaskFromStore, e.target.value as 'todo' | 'doing' | 'done')}
-                    >
-                      {statusOptions.map((opt) => (
-                        <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
-                      ))}
-                    </TextField>
-                  </Box>
-
-                  <Box sx={{ minWidth: 260 }}>
-                    {(manageTaskFromStore.status ?? 'todo') === 'done' ? (
-                      <TextField
-                        label="Concluída em"
-                        type="datetime-local"
-                        size="small"
-                        fullWidth
-                        value={
-                          toDateTimeLocalValue(manageTaskFromStore.completedAt) || nowLocalIso
-                        }
-                        onChange={(e) => handleCompletedAtChange(manageTaskFromStore, e.target.value)}
-                        InputLabelProps={{ shrink: true }}
-                      />
-                    ) : (
-                      <TextField
-                        label="Concluída em"
-                        size="small"
-                        fullWidth
-                        value="—"
-                        disabled
-                      />
-                    )}
-                  </Box>
-                </Stack>
-
-                <Typography variant="body2">Turbo: {manageTaskFromStore.turboEnabled ? manageTaskFromStore.turboStoryPoints : 'Desativado'}</Typography>
-                <Typography variant="subtitle2" sx={{ mt: 1 }}>Plano por dia</Typography>
-                {!manageTimelineFromStore.length && (
-                  <Typography variant="body2" color="text.secondary">
-                    Calcule as datas no planejamento para ver o cronograma detalhado.
-                  </Typography>
-                )}
-                {manageTimelineFromStore.length ? (
-                  <List dense>
-                    {manageTimelineFromStore.map((seg, idx) => (
-                      <div key={`${seg.date}-${seg.startTime}-${seg.endTime}-${idx}`}>
-                        <ListItem alignItems="flex-start">
-                          <ListItemText
-                            primary={`${formatDateTimeBr(`${seg.date} ${seg.startTime}`)} - ${seg.endTime} (${formatMinutesToClock(seg.minutes)})`}
-                            secondaryTypographyProps={{ component: 'div' }}
-                            secondary={
-                              seg.detail ? (
-                                <div>
-                                  <Typography component="div" variant="body2">
-                                    Nesta tarefa: {formatMinutesToClock(seg.minutes)} · Capacidade do dia: {formatMinutesToClock(seg.detail.capacityMinutes)}
-                                  </Typography>
-                                  <Typography component="div" variant="body2">
-                                    Eventos/recorrentes no dia: {formatMinutesToClock(seg.detail.eventMinutes + seg.detail.recurringMinutes)} · Períodos: {seg.detail.periods.map((p) => `${p.start}-${p.end}`).join(', ')}
-                                  </Typography>
-                                </div>
-                              ) : undefined
-                            }
-                          />
-                        </ListItem>
-                        {idx < manageTimelineFromStore.length - 1 && <Divider component="li" />}
-                      </div>
-                    ))}
-                  </List>
-                ) : null}
-              </>
-            )}
-          </Box>
-        </DialogContent>
-        {manageTask && (
-          <Stack direction="row" spacing={1} sx={{ px: 3, py: 2, justifyContent: 'flex-end' }}>
-            <Button color="secondary" onClick={() => dispatchNavigateToPlanning(manageTask.id)}>
-              Abrir no planejamento
-            </Button>
-            <Button onClick={handleCloseManage}>Fechar</Button>
-          </Stack>
-        )}
-      </Dialog>
+      <TaskManageDialog
+        open={!!manageTask}
+        task={manageTaskFromStore}
+        manageDraft={null}
+        manageTurboValue={0}
+        manageTab="resumo"
+        onTabChange={() => {}}
+        onClose={handleCloseManage}
+        formatDateTime={formatDateTimeBr}
+        formatMinutesToClock={formatMinutesToClock}
+        statusOptions={statusOptions}
+        onStatusChange={handleStatusChange}
+        onCompletedAtChange={handleCompletedAtChange}
+        toDateTimeLocalValue={toDateTimeLocalValue}
+        nowLocalIso={nowLocalIso}
+        onNavigateToPlanning={dispatchNavigateToPlanning}
+      />
     </div>
   );
 }

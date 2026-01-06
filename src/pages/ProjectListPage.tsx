@@ -4,6 +4,7 @@ import {
   Button,
   Card,
   CardContent,
+  Chip,
   Divider,
   List,
   ListItem,
@@ -15,13 +16,14 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import LaunchIcon from '@mui/icons-material/Launch';
 import { useNavigate } from 'react-router-dom';
-import { createProject, listProjects, removeProject, setActiveProjectId } from '../app/sprintLibrary';
+import { createProject, getActiveProjectId, listProjects, removeProject, setActiveProjectId } from '../app/sprintLibrary';
 
 const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString('pt-BR') : '');
 
 export function ProjectListPage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState(() => listProjects());
+  const activeProjectId = getActiveProjectId();
 
   const hasProjects = useMemo(() => projects.length > 0, [projects]);
   const refresh = () => setProjects(listProjects());
@@ -94,6 +96,9 @@ export function ProjectListPage() {
                       primary={
                         <Stack direction="row" spacing={1} alignItems="center">
                           <Typography variant="subtitle1">{project.name}</Typography>
+                          {activeProjectId === project.id && (
+                            <Chip size="small" color="primary" label="Selecionado" />
+                          )}
                         </Stack>
                       }
                       secondary={

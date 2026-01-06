@@ -7,9 +7,10 @@ interface HeaderProps {
   followUpEnabled?: boolean;
   sprintId?: string;
   projectId?: string;
+  projectName?: string;
 }
 
-export function Header({ active, followUpEnabled = true, sprintId, projectId }: HeaderProps) {
+export function Header({ active, followUpEnabled = true, sprintId, projectId, projectName }: HeaderProps) {
   return (
     <AppBar position="fixed" color="default" elevation={1}>
       <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
@@ -23,6 +24,23 @@ export function Header({ active, followUpEnabled = true, sprintId, projectId }: 
           <Typography variant="h6" sx={{ mb: 0 }}>
             Calculadora de Capacidade Scrum
           </Typography>
+          {projectName && (
+            <Box
+              component="span"
+              sx={{
+                ml: 1,
+                px: 1,
+                py: 0.5,
+                borderRadius: 1,
+                bgcolor: 'primary.main',
+                color: 'primary.contrastText',
+                fontSize: 12,
+                fontWeight: 700,
+              }}
+            >
+              Projeto: {projectName}
+            </Box>
+          )}
         </Stack>
         <Stack direction="row" spacing={1}>
           <Button

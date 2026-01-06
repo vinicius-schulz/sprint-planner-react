@@ -16,7 +16,7 @@ import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import LaunchIcon from '@mui/icons-material/Launch';
 import { useNavigate, useParams } from 'react-router-dom';
-import { createNewSprint, ensureActiveSprint, listSprintSummaries, removeSprint } from '../app/sprintLibrary';
+import { createNewSprint, ensureActiveSprint, getProjectMeta, listSprintSummaries, removeSprint } from '../app/sprintLibrary';
 import { useAppDispatch } from '../app/hooks';
 import { hydrateStoreFromState } from '../app/sprintHydrator';
 
@@ -27,6 +27,7 @@ export function SprintListPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const dispatch = useAppDispatch();
   const [sprints, setSprints] = useState(() => listSprintSummaries(projectId));
+  const projectName = projectId ? getProjectMeta(projectId)?.name : undefined;
 
   const hasSprints = useMemo(() => sprints.length > 0, [sprints]);
 
@@ -71,7 +72,9 @@ export function SprintListPage() {
     <Stack spacing={2} sx={{ mb: 2 }}>
       <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ flexWrap: 'wrap', gap: 2 }}>
         <Box>
-          <Typography variant="h4" sx={{ mb: 0 }}>Sprints</Typography>
+          <Typography variant="h4" sx={{ mb: 0 }}>
+            Sprints {projectName ? `· ${projectName}` : ''}
+          </Typography>
           <Typography variant="body2" color="text.secondary">Selecione ou crie uma sprint deste projeto.</Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>

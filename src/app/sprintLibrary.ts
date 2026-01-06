@@ -286,6 +286,12 @@ export const listProjects = (): ProjectMeta[] => {
   return Object.values(library.projects).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 };
 
+export const getProjectMeta = (id?: string) => {
+  if (!id) return undefined;
+  const library = readLibrary();
+  return library.projects[id];
+};
+
 export const createProject = (name: string, startDate?: string, endDate?: string, description?: string) => {
   const library = readLibrary();
   const id = randomProjectId();

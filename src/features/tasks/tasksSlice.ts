@@ -52,7 +52,24 @@ const tasksSlice = createSlice({
       );
     },
     setComputedTasks(state, action: PayloadAction<TaskItem[]>) {
-      state.items = action.payload;
+      const byId = new Map(action.payload.map((t) => [t.id, t] as const));
+      state.items = state.items.map((t) => {
+        const computed = byId.get(t.id);
+        if (!computed) {
+          return {
+            ...t,
+            computedStartDate: undefined,
+            computedEndDate: undefined,
+            computedTimeline: undefined,
+          };
+        }
+        return {
+          ...t,
+          computedStartDate: computed.computedStartDate,
+          computedEndDate: computed.computedEndDate,
+          computedTimeline: computed.computedTimeline,
+        };
+      });
     },
     resetTasks() {
       return initialState;

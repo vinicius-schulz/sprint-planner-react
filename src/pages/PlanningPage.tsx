@@ -24,10 +24,9 @@ import { NewSchedulePanel } from '../components/NewSchedulePanel';
 import { ReportExportButton } from '../components/ReportExport';
 import { ConfigTab } from '../features/config/ConfigTab';
 import { ImportExportTab } from '../features/importExport/ImportExportTab';
-import { ReviewTab } from '../features/review/ReviewTab';
-import type { PlanningStepKey } from '../features/review/ReviewTab';
 import { reopenPlanning } from '../features/review/planningLifecycleSlice';
 import { resetFollowUpData } from '../features/tasks/tasksSlice';
+import { ReviewTab, type PlanningStepKey } from '../features/review/ReviewTab';
 
 const taskManageEventName = 'task-manage-open';
 const navigateToPlanningEventName = 'navigate-to-planning';

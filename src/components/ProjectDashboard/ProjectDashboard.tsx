@@ -1,4 +1,4 @@
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   Box,
@@ -14,14 +14,13 @@ import {
   Stack,
   Typography,
 } from '@mui/material';
-import type { RootPersistedState, PlanningLifecycleState } from '../../domain/types';
+import type { RootPersistedState, PlanningLifecycleState, ProjectMeta, StoredSprintMeta } from '../../domain/types';
 import { buildWorkingCalendar, computeTeamCapacity, computeWorkingHours } from '../../domain/services/capacityService';
 import { formatHoursToClock } from '../../domain/services/timeFormat';
 import {
   getSprintState,
   listSprintSummaries,
 } from '../../app/sprintLibrary';
-import type { ProjectMeta, StoredSprintMeta } from '../../app/sprintLibrary';
 import styles from './ProjectDashboard.module.css';
 
 type ProjectDashboardProps = {
@@ -113,22 +112,37 @@ export function ProjectDashboard({
   const selectedProject = isAllProjects ? undefined : projects.find((project) => project.id === selectedProjectId);
   const hasProjects = projects.length > 0;
   const resolvedProject = selectedProject ?? projects[0]!;
+  const [sprintSummaries, setSprintSummaries] = useState<StoredSprintMeta[]>([]);
+  const [sprintsWithState, setSprintsWithState] = useState<SprintWithState[]>([]);
 
-  const sprintSummaries = useMemo(
-    () => {
+  useEffect(() => {
+    let isActive = true;
+    const loadSprints = async () => {
+      if (!projects.length) {
+        setSprintSummaries([]);
+        setSprintsWithState([]);
+        return;
+      }
       const sourceProjects = isAllProjects ? projects : projects.filter((project) => project.id === selectedProjectId);
-      return sourceProjects
-        .flatMap((project) => listSprintSummaries(project.id))
-        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    },
-    [projects, selectedProjectId, isAllProjects],
-  );
+      const summaries = (await Promise.all(sourceProjects.map((project) => listSprintSummaries(project.id)))).flat();
+      summaries.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+      if (!isActive) return;
+      setSprintSummaries(summaries);
+      const states = await Promise.all(
+        summaries.map(async (meta) => {
+          const state = await getSprintState(meta.id);
+          return state ? { meta, state } : undefined;
+        }),
+      );
+      if (!isActive) return;
+      setSprintsWithState(states.filter((entry): entry is SprintWithState => Boolean(entry)));
+    };
 
-  const sprintsWithState = useMemo(() => (
-    sprintSummaries
-      .map((meta) => ({ meta, state: getSprintState(meta.id) }))
-      .filter((entry): entry is SprintWithState => Boolean(entry.state))
-  ), [sprintSummaries]);
+    void loadSprints();
+    return () => {
+      isActive = false;
+    };
+  }, [projects, selectedProjectId, isAllProjects]);
 
   const statusCounts = useMemo(() => sprintSummaries.reduce(
     (acc, sprint) => {

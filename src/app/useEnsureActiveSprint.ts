@@ -24,11 +24,20 @@ export const useEnsureActiveSprint = () => {
             return;
         }
 
-        const { state } = ensureActiveSprint(sprintId);
-        if (hydratedSprintId.current === sprintId && hasRuntimeState) {
-            return;
-        }
-        hydrateStoreFromState(dispatch, state);
-        hydratedSprintId.current = sprintId;
+        let isActive = true;
+        const loadState = async () => {
+            const { state } = await ensureActiveSprint(sprintId);
+            if (!isActive) return;
+            if (hydratedSprintId.current === sprintId && hasRuntimeState) {
+                return;
+            }
+            hydrateStoreFromState(dispatch, state);
+            hydratedSprintId.current = sprintId;
+        };
+
+        void loadState();
+        return () => {
+            isActive = false;
+        };
     }, [currentStatus, dispatch, hasRuntimeState, sprintId]);
 };

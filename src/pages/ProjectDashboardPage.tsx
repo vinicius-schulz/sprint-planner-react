@@ -5,11 +5,25 @@ import { ProjectDashboard } from '../components/ProjectDashboard';
 import {
   listProjects,
 } from '../app/sprintLibrary';
+import type { ProjectMeta } from '../domain/types';
 
 export function ProjectDashboardPage() {
   const navigate = useNavigate();
-  const [projects] = useState(() => listProjects());
+  const [projects, setProjects] = useState<ProjectMeta[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<'all' | string>('all');
+
+  useEffect(() => {
+    let isActive = true;
+    const loadProjects = async () => {
+      const data = await listProjects();
+      if (!isActive) return;
+      setProjects(data);
+    };
+    void loadProjects();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (selectedProjectId === 'all') return;

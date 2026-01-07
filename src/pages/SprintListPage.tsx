@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -18,6 +18,7 @@ import LaunchIcon from '@mui/icons-material/Launch';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createNewSprint, ensureActiveSprint, getProjectMeta, listSprintSummaries, removeSprint } from '../app/sprintLibrary';
+import type { StoredSprintMeta } from '../domain/types';
 import { useAppDispatch } from '../app/hooks';
 import { hydrateStoreFromState } from '../app/sprintHydrator';
 
@@ -27,14 +28,40 @@ export function SprintListPage() {
   const navigate = useNavigate();
   const { projectId } = useParams<{ projectId: string }>();
   const dispatch = useAppDispatch();
-  const [sprints, setSprints] = useState(() => listSprintSummaries(projectId));
-  const projectName = projectId ? getProjectMeta(projectId)?.name : undefined;
+  const [sprints, setSprints] = useState<StoredSprintMeta[]>([]);
+  const [projectName, setProjectName] = useState<string | undefined>(undefined);
 
   const hasSprints = useMemo(() => sprints.length > 0, [sprints]);
 
-  const refresh = () => setSprints(listSprintSummaries(projectId));
+  const refresh = async () => {
+    const next = await listSprintSummaries(projectId);
+    setSprints(next);
+    return next;
+  };
 
-  const handleCreate = () => {
+  useEffect(() => {
+    if (!projectId) {
+      setSprints([]);
+      setProjectName(undefined);
+      return;
+    }
+    let isActive = true;
+    const loadData = async () => {
+      const [summaries, project] = await Promise.all([
+        listSprintSummaries(projectId),
+        getProjectMeta(projectId),
+      ]);
+      if (!isActive) return;
+      setSprints(summaries);
+      setProjectName(project?.name);
+    };
+    void loadData();
+    return () => {
+      isActive = false;
+    };
+  }, [projectId]);
+
+  const handleCreate = async () => {
     if (!projectId) {
       navigate('/projects');
       return;
@@ -42,35 +69,35 @@ export function SprintListPage() {
     const suggested = `Sprint ${sprints.length + 1}`;
     const input = window.prompt('Nome da nova sprint', suggested);
     const title = (input ?? suggested).trim();
-    const { id, state } = createNewSprint(title || suggested, projectId);
+    const { id, state } = await createNewSprint(title || suggested, projectId);
     hydrateStoreFromState(dispatch, state);
-    ensureActiveSprint(id);
-    refresh();
+    await ensureActiveSprint(id);
+    await refresh();
     navigate(`/plan/${id}`);
   };
 
-  const openSprintContext = (id: string) => {
-    const { state } = ensureActiveSprint(id);
+  const openSprintContext = async (id: string) => {
+    const { state } = await ensureActiveSprint(id);
     hydrateStoreFromState(dispatch, state);
   };
 
-  const handlePlan = (id: string) => {
-    openSprintContext(id);
+  const handlePlan = async (id: string) => {
+    await openSprintContext(id);
     navigate(`/plan/${id}`);
   };
 
-  const handleFollowUp = (id: string) => {
-    openSprintContext(id);
+  const handleFollowUp = async (id: string) => {
+    await openSprintContext(id);
     navigate(`/acomp/${id}`);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const sprint = sprints.find((s) => s.id === id);
     const name = sprint?.title || id;
     const confirmed = window.confirm(`Excluir ${name}? Essa ação remove apenas o rascunho local desta sprint.`);
     if (!confirmed) return;
-    removeSprint(id);
-    refresh();
+    await removeSprint(id);
+    await refresh();
   };
 
   if (!projectId) {

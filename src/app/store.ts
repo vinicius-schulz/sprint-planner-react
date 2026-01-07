@@ -29,7 +29,7 @@ export const createAppStore = (preloadedState?: RootPersistedState) => {
     saveTimeout = setTimeout(() => {
       const state = store.getState() as RootPersistedState;
       if (getActiveSprintId()) {
-        saveActiveSprintState(state);
+        void saveActiveSprintState(state);
       }
     }, 300);
   });

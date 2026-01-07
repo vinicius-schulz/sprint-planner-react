@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -24,22 +24,36 @@ import {
   removeProject,
   updateProject,
 } from '../app/sprintLibrary';
+import type { ProjectMeta } from '../domain/types';
 
 const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString('pt-BR') : '');
 
 export function ProjectListPage() {
   const navigate = useNavigate();
-  const [projects, setProjects] = useState(() => listProjects());
+  const [projects, setProjects] = useState<ProjectMeta[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const editingProject = editingProjectId ? projects.find((p) => p.id === editingProjectId) : undefined;
 
   const hasProjects = useMemo(() => projects.length > 0, [projects]);
-  const refresh = () => {
-    const next = listProjects();
+  const refresh = async () => {
+    const next = await listProjects();
     setProjects(next);
     return next;
   };
+
+  useEffect(() => {
+    let isActive = true;
+    const loadProjects = async () => {
+      const next = await listProjects();
+      if (!isActive) return;
+      setProjects(next);
+    };
+    void loadProjects();
+    return () => {
+      isActive = false;
+    };
+  }, []);
 
   const handleOpenCreate = () => {
     setEditingProjectId(null);
@@ -55,23 +69,23 @@ export function ProjectListPage() {
     navigate(`/projects/${id}/sprints`);
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const project = projects.find((p) => p.id === id);
     const name = project?.name || id;
     const confirmed = window.confirm(`Excluir ${name}? As sprints ligadas a este projeto também serão removidas.`);
     if (!confirmed) return;
-    removeProject(id);
-    refresh();
+    await removeProject(id);
+    await refresh();
   };
 
-  const handleSave = (data: ProjectModalData) => {
+  const handleSave = async (data: ProjectModalData) => {
     if (editingProjectId && editingProject) {
-      updateProject({ ...editingProject, ...data });
+      await updateProject({ ...editingProject, ...data });
     } else {
-      const project = createProject(data);
+      const project = await createProject(data);
       navigate(`/projects/${project.id}/sprints`);
     }
-    refresh();
+    await refresh();
     setIsModalOpen(false);
   };
 

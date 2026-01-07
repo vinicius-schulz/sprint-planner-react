@@ -24,16 +24,21 @@ const theme = createTheme({
 
 const pathMatch = window.location.pathname.match(/^\/(?:plan|acomp)\/([^/]+)/);
 const requestedSprintId = pathMatch?.[1];
-const { state: preloadedState } = ensureActiveSprint(requestedSprintId);
-const store = createAppStore(preloadedState);
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <Provider store={store}>
-      <ThemeProvider theme={theme}>
-        <CssBaseline />
-        <App />
-      </ThemeProvider>
-    </Provider>
-  </StrictMode>,
-);
+const bootstrap = async () => {
+  const { state: preloadedState } = await ensureActiveSprint(requestedSprintId);
+  const store = createAppStore(preloadedState);
+
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <Provider store={store}>
+        <ThemeProvider theme={theme}>
+          <CssBaseline />
+          <App />
+        </ThemeProvider>
+      </Provider>
+    </StrictMode>,
+  );
+};
+
+void bootstrap();

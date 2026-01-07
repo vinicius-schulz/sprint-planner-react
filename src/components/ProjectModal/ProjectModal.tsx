@@ -10,7 +10,7 @@ import {
     Stack,
     TextField,
 } from '@mui/material';
-import type { ProjectMeta } from '../../app/sprintLibrary';
+import type { ProjectMeta } from '../../domain/types';
 
 const statusOptions: Array<{ value: ProjectMeta['status']; label: string }> = [
     { value: 'draft', label: 'Rascunho' },

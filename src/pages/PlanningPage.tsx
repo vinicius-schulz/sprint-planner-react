@@ -43,7 +43,7 @@ export function PlanningPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { sprintId } = useParams<{ sprintId: string }>();
-  const projectId = sprintId ? getSprintMeta(sprintId)?.projectId : undefined;
+  const [projectId, setProjectId] = useState<string | undefined>(undefined);
   const planningStatus = useAppSelector((state) => state.planningLifecycle.status);
   const planningLocked = planningStatus !== 'editing';
 
@@ -82,6 +82,23 @@ export function PlanningPage() {
       element: <ReviewTab onSaved={() => (sprintId ? navigate(`/acomp/${sprintId}`) : navigate(projectId ? `/projects/${projectId}/sprints` : '/projects'))} onEditStep={goToStepKey} />,
     },
   ];
+
+  useEffect(() => {
+    if (!sprintId) {
+      setProjectId(undefined);
+      return;
+    }
+    let isActive = true;
+    const loadProjectMeta = async () => {
+      const meta = await getSprintMeta(sprintId);
+      if (!isActive) return;
+      setProjectId(meta?.projectId);
+    };
+    void loadProjectMeta();
+    return () => {
+      isActive = false;
+    };
+  }, [sprintId]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);

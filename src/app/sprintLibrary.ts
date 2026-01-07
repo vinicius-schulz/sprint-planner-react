@@ -1,30 +1,13 @@
 import { DEFAULT_CONFIG, EMPTY_SPRINT, INITIAL_PLANNING_LIFECYCLE_STATE } from '../domain/constants';
-import type { PlanningLifecycleState, RootPersistedState } from '../domain/types';
+import type { ProjectInput, ProjectMeta, RootPersistedState, StoredSprintMeta } from '../domain/types';
+import { isApiEnabled } from '../config/integration';
+import * as projectApi from '../services/api/projects';
+import * as sprintApi from '../services/api/sprints';
 
 const LIBRARY_KEY = 'scrum-capacity-library-v1';
 const LEGACY_KEY = 'scrum-capacity-state-v1';
 const DEFAULT_SPRINT_PREFIX = 'sprint';
 const DEFAULT_PROJECT_PREFIX = 'project';
-
-export interface StoredSprintMeta {
-  id: string;
-  title: string;
-  startDate: string;
-  endDate: string;
-  updatedAt: string;
-  status: PlanningLifecycleState['status'];
-  projectId: string;
-}
-
-export interface ProjectMeta {
-  id: string;
-  name: string;
-  startDate?: string;
-  endDate?: string;
-  description?: string;
-  status: 'draft' | 'active' | 'archived';
-  updatedAt: string;
-}
 
 interface StoredSprintRecord {
   id: string;
@@ -186,7 +169,23 @@ const ensureProjectExists = (library: SprintLibraryPayload, projectId?: string) 
   } as const;
 };
 
-export const ensureActiveSprint = (requestedId?: string) => {
+export const ensureActiveSprint = async (requestedId?: string) => {
+  if (isApiEnabled) {
+    const activeId = requestedId || getActiveSprintId();
+    if (!activeId) {
+      return { state: buildEmptyState(), activeSprintId: undefined };
+    }
+    try {
+      const sprint = await sprintApi.fetchSprint(activeId);
+      activeSprintIdMemo = sprint.id;
+      setActiveSprintId(sprint.id);
+      return { state: cloneState(sprint.state), activeSprintId: sprint.id };
+    } catch (err) {
+      console.error('Falha ao carregar sprint via API', err);
+      return { state: buildEmptyState(), activeSprintId: undefined };
+    }
+  }
+
   let library = readLibrary();
   let activeId = requestedId || library.activeSprintId;
 
@@ -211,9 +210,17 @@ export const ensureActiveSprint = (requestedId?: string) => {
   return { state: cloneState(record.state), activeSprintId: activeId };
 };
 
-export const saveActiveSprintState = (state: RootPersistedState) => {
+export const saveActiveSprintState = async (state: RootPersistedState) => {
   const activeId = getActiveSprintId();
   if (!activeId) return;
+  if (isApiEnabled) {
+    try {
+      await sprintApi.updateSprintState(activeId, state);
+    } catch (err) {
+      console.error('Falha ao salvar sprint via API', err);
+    }
+    return;
+  }
   const library = readLibrary();
   const projectId = library.sprints[activeId]?.meta.projectId ?? library.activeProjectId;
   if (!projectId) return;
@@ -235,8 +242,11 @@ export const saveActiveSprintState = (state: RootPersistedState) => {
   writeLibrary(updated);
 };
 
-export const listSprintSummaries = (projectId?: string): StoredSprintMeta[] => {
+export const listSprintSummaries = async (projectId?: string): Promise<StoredSprintMeta[]> => {
   if (!projectId) return [];
+  if (isApiEnabled) {
+    return sprintApi.fetchSprintSummaries(projectId);
+  }
   const library = readLibrary();
   return Object.values(library.sprints)
     .filter((s) => s.meta.projectId === projectId)
@@ -244,7 +254,20 @@ export const listSprintSummaries = (projectId?: string): StoredSprintMeta[] => {
     .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 };
 
-export const removeSprint = (id: string) => {
+export const removeSprint = async (id: string) => {
+  if (isApiEnabled) {
+    try {
+      await sprintApi.deleteSprint(id);
+    } catch (err) {
+      console.error('Falha ao remover sprint via API', err);
+    }
+    if (getActiveSprintId() === id) {
+      activeSprintIdMemo = undefined;
+      const current = readLibrary();
+      writeLibrary({ ...current, activeSprintId: undefined });
+    }
+    return { nextActiveId: getActiveSprintId() };
+  }
   const library = readLibrary();
   const { [id]: removed, ...rest } = library.sprints;
   if (!removed) return { nextActiveId: library.activeSprintId };
@@ -260,9 +283,15 @@ export const removeSprint = (id: string) => {
   return { nextActiveId };
 };
 
-export const createNewSprint = (title?: string, projectId?: string) => {
+export const createNewSprint = async (title?: string, projectId?: string) => {
   if (!projectId) {
     throw new Error('projectId is required to create a sprint');
+  }
+  if (isApiEnabled) {
+    const sprint = await sprintApi.createSprint({ title, projectId });
+    activeSprintIdMemo = sprint.id;
+    setActiveSprintId(sprint.id);
+    return { id: sprint.id, state: cloneState(sprint.state) };
   }
   const id = randomId();
   const state = buildEmptyState();
@@ -287,37 +316,63 @@ export const createNewSprint = (title?: string, projectId?: string) => {
   return { id, state };
 };
 
-export const getSprintState = (id: string) => {
+export const getSprintState = async (id: string) => {
+  if (isApiEnabled) {
+    try {
+      const sprint = await sprintApi.fetchSprint(id);
+      return cloneState(sprint.state);
+    } catch (err) {
+      console.error('Falha ao carregar estado da sprint via API', err);
+      return undefined;
+    }
+  }
   const library = readLibrary();
   const state = library.sprints[id]?.state;
   return state ? cloneState(state) : undefined;
 };
 
-export const getSprintMeta = (id: string) => {
+export const getSprintMeta = async (id: string) => {
+  if (isApiEnabled) {
+    try {
+      const sprint = await sprintApi.fetchSprint(id);
+      return sprint.meta;
+    } catch (err) {
+      console.error('Falha ao carregar sprint via API', err);
+      return undefined;
+    }
+  }
   const library = readLibrary();
   return library.sprints[id]?.meta;
 };
 
-export const listProjects = (): ProjectMeta[] => {
+export const listProjects = async (): Promise<ProjectMeta[]> => {
+  if (isApiEnabled) {
+    return projectApi.fetchProjects();
+  }
   const library = readLibrary();
   return Object.values(library.projects).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 };
 
-export const getProjectMeta = (id?: string) => {
+export const getProjectMeta = async (id?: string) => {
   if (!id) return undefined;
+  if (isApiEnabled) {
+    try {
+      return await projectApi.fetchProject(id);
+    } catch (err) {
+      console.error('Falha ao carregar projeto via API', err);
+      return undefined;
+    }
+  }
   const library = readLibrary();
   return library.projects[id];
 };
 
-type ProjectInput = {
-  name: string;
-  startDate?: string;
-  endDate?: string;
-  description?: string;
-  status?: ProjectMeta['status'];
-};
-
-export const createProject = ({ name, startDate, endDate, description, status }: ProjectInput) => {
+export const createProject = async ({ name, startDate, endDate, description, status }: ProjectInput) => {
+  if (isApiEnabled) {
+    const project = await projectApi.createProject({ name, startDate, endDate, description, status });
+    setActiveProjectId(project.id);
+    return project;
+  }
   const library = readLibrary();
   const id = randomProjectId();
   const project: ProjectMeta = {
@@ -338,7 +393,11 @@ export const createProject = ({ name, startDate, endDate, description, status }:
   return project;
 };
 
-export const updateProject = (project: ProjectMeta) => {
+export const updateProject = async (project: ProjectMeta) => {
+  if (isApiEnabled) {
+    await projectApi.updateProject(project);
+    return;
+  }
   const library = readLibrary();
   if (!library.projects[project.id]) return;
   const updated: SprintLibraryPayload = {
@@ -356,7 +415,11 @@ export const updateProject = (project: ProjectMeta) => {
   writeLibrary(updated);
 };
 
-export const removeProject = (id: string) => {
+export const removeProject = async (id: string) => {
+  if (isApiEnabled) {
+    await projectApi.deleteProject(id);
+    return;
+  }
   const library = readLibrary();
   const { [id]: removed, ...rest } = library.projects;
   if (!removed) return;

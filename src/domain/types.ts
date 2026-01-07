@@ -27,6 +27,34 @@ export interface PlanningLifecycleState {
   closedAt?: DateString;
 }
 
+export interface StoredSprintMeta {
+  id: string;
+  title: string;
+  startDate: string;
+  endDate: string;
+  updatedAt: string;
+  status: PlanningLifecycleState['status'];
+  projectId: string;
+}
+
+export interface ProjectMeta {
+  id: string;
+  name: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  status: 'draft' | 'active' | 'archived';
+  updatedAt: string;
+}
+
+export type ProjectInput = {
+  name: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+  status?: ProjectMeta['status'];
+};
+
 export interface CalendarState {
   nonWorkingDaysManual: DateString[];
   nonWorkingDaysRemoved: DateString[];

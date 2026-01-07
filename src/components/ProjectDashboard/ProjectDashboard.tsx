@@ -26,9 +26,8 @@ import styles from './ProjectDashboard.module.css';
 
 type ProjectDashboardProps = {
   projects: ProjectMeta[];
-  selectedProjectId?: string;
-  onSelectProject: (id: string) => void;
-  activeSprintId?: string;
+  selectedProjectId: 'all' | string;
+  onSelectProject: (id: 'all' | string) => void;
 };
 
 type SprintWithState = {
@@ -80,14 +79,6 @@ const formatDueDate = (value?: string) => {
   return parsed ? parsed.toLocaleDateString('pt-BR') : value;
 };
 
-const sprintStatusLabel = (status: PlanningLifecycleState['status']) => (
-  status === 'closed' ? 'Fechada' : status === 'followup' ? 'Em acompanhamento' : 'Em edição'
-);
-
-const sprintStatusColor = (status: PlanningLifecycleState['status']) => (
-  status === 'closed' ? 'success' : status === 'followup' ? 'info' : 'warning'
-);
-
 const projectStatusLabel = (status: ProjectMeta['status']) => (
   status === 'archived' ? 'Arquivado' : status === 'draft' ? 'Rascunho' : 'Ativo'
 );
@@ -117,14 +108,20 @@ export function ProjectDashboard({
   projects,
   selectedProjectId,
   onSelectProject,
-  activeSprintId,
 }: ProjectDashboardProps) {
-  const selectedProject = projects.find((project) => project.id === selectedProjectId);
+  const isAllProjects = selectedProjectId === 'all';
+  const selectedProject = isAllProjects ? undefined : projects.find((project) => project.id === selectedProjectId);
   const hasProjects = projects.length > 0;
+  const resolvedProject = selectedProject ?? projects[0]!;
 
   const sprintSummaries = useMemo(
-    () => (selectedProjectId ? listSprintSummaries(selectedProjectId) : []),
-    [selectedProjectId],
+    () => {
+      const sourceProjects = isAllProjects ? projects : projects.filter((project) => project.id === selectedProjectId);
+      return sourceProjects
+        .flatMap((project) => listSprintSummaries(project.id))
+        .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    },
+    [projects, selectedProjectId, isAllProjects],
   );
 
   const sprintsWithState = useMemo(() => (
@@ -235,10 +232,15 @@ export function ProjectDashboard({
     };
   }, [sprintsWithState]);
 
-  const lastUpdated = sprintSummaries[0]?.updatedAt ?? selectedProject?.updatedAt;
-  const activeSprint = activeSprintId
-    ? sprintSummaries.find((sprint) => sprint.id === activeSprintId)
-    : undefined;
+  const projectStatusCounts = useMemo(() => projects.reduce(
+    (acc, project) => {
+      acc[project.status] += 1;
+      return acc;
+    },
+    { active: 0, archived: 0, draft: 0 } as Record<ProjectMeta['status'], number>,
+  ), [projects]);
+
+  const lastUpdated = sprintSummaries[0]?.updatedAt ?? resolvedProject?.updatedAt;
 
   const taskProgress = aggregates.totalTasks
     ? Math.round((aggregates.tasksDone / aggregates.totalTasks) * 100)
@@ -263,18 +265,19 @@ export function ProjectDashboard({
             <Box>
               <Typography variant="h6">Dashboard do projeto</Typography>
               <Typography variant="body2" color="text.secondary">
-                Selecione um projeto para ver métricas e indicadores.
+                Selecione um projeto ou "Todos" para ver métricas e indicadores.
               </Typography>
             </Box>
             <FormControl size="small" className={styles.selector}>
-              <InputLabel id="project-dashboard-select">Projeto selecionado</InputLabel>
+              <InputLabel id="project-dashboard-select">Filtro de projeto</InputLabel>
               <Select
                 labelId="project-dashboard-select"
-                value={selectedProjectId ?? ''}
-                label="Projeto selecionado"
+                value={selectedProjectId}
+                label="Filtro de projeto"
                 onChange={(e) => onSelectProject(String(e.target.value))}
                 disabled={!projects.length}
               >
+                <MenuItem value="all">Todos</MenuItem>
                 {projects.map((project) => (
                   <MenuItem key={project.id} value={project.id}>
                     {project.name}
@@ -282,48 +285,62 @@ export function ProjectDashboard({
                 ))}
               </Select>
               <Typography variant="caption" color="text.secondary" className={styles.helper}>
-                Esta seleção só muda o dashboard. O botão "Sprints" abre a lista.
+                Este filtro só muda o dashboard. Para acessar sprints, abra o projeto.
               </Typography>
             </FormControl>
           </Box>
 
-          {!selectedProject && (
+          {!hasProjects && (
             <Typography variant="body2" color="text.secondary">
-              {hasProjects ? 'Selecione um projeto para exibir o dashboard.' : 'Crie um projeto para exibir o dashboard.'}
+              Crie um projeto para exibir o dashboard.
             </Typography>
           )}
 
-          {selectedProject && (
+          {hasProjects && (
             <>
               <Paper variant="outlined" className={styles.hero}>
                 <Stack spacing={1}>
-                  <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-                    <Typography variant="subtitle2">Projeto selecionado</Typography>
-                    <Chip size="small" label={projectStatusLabel(selectedProject.status)} color={projectStatusColor(selectedProject.status)} />
-                  </Stack>
-                  <div className={styles.heroRow}>
-                    <Typography variant="h6">{selectedProject.name}</Typography>
-                    {selectedProject.startDate || selectedProject.endDate ? (
-                      <Typography variant="body2" color="text.secondary">
-                        Período: {formatDate(selectedProject.startDate)} {selectedProject.startDate && '-'} {formatDate(selectedProject.endDate)}
+                  {isAllProjects ? (
+                    <>
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                        <Typography variant="subtitle2">Todos os projetos</Typography>
+                        <Chip size="small" label={`${projects.length} projetos`} color="primary" />
+                      </Stack>
+                      <div className={styles.heroRow}>
+                        <Typography variant="h6">Visão consolidada</Typography>
+                        <Typography variant="body2" color="text.secondary">
+                          Métricas unificadas de todas as sprints.
+                        </Typography>
+                      </div>
+                      <div className={styles.statusRow}>
+                        <Chip size="small" label={`Ativos ${projectStatusCounts.active}`} color="success" />
+                        <Chip size="small" label={`Rascunho ${projectStatusCounts.draft}`} color="warning" />
+                        <Chip size="small" label={`Arquivados ${projectStatusCounts.archived}`} color="default" />
+                      </div>
+                      <Typography variant="caption" color="text.secondary">
+                        Atualizado em {formatDate(lastUpdated)}
                       </Typography>
-                    ) : (
-                      <Typography variant="body2" color="text.secondary">Período não definido</Typography>
-                    )}
-                  </div>
-                  <Typography variant="caption" color="text.secondary">
-                    Atualizado em {formatDate(lastUpdated)}
-                  </Typography>
-                  {activeSprint ? (
-                    <div className={styles.heroRow}>
-                      <Typography variant="body2">Sprint ativa:</Typography>
-                      <Typography variant="body2">{activeSprint.title || 'Sprint sem título'}</Typography>
-                      <Chip size="small" label={sprintStatusLabel(activeSprint.status)} color={sprintStatusColor(activeSprint.status)} />
-                    </div>
+                    </>
                   ) : (
-                    <Typography variant="caption" color="text.secondary">
-                      Nenhuma sprint ativa neste projeto.
-                    </Typography>
+                    <>
+                      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+                        <Typography variant="subtitle2">Projeto filtrado</Typography>
+                        <Chip size="small" label={projectStatusLabel(resolvedProject.status)} color={projectStatusColor(resolvedProject.status)} />
+                      </Stack>
+                      <div className={styles.heroRow}>
+                        <Typography variant="h6">{resolvedProject.name}</Typography>
+                        {resolvedProject.startDate || resolvedProject.endDate ? (
+                          <Typography variant="body2" color="text.secondary">
+                            Período: {formatDate(resolvedProject.startDate)} {resolvedProject.startDate && '-'} {formatDate(resolvedProject.endDate)}
+                          </Typography>
+                        ) : (
+                          <Typography variant="body2" color="text.secondary">Período não definido</Typography>
+                        )}
+                      </div>
+                      <Typography variant="caption" color="text.secondary">
+                        Atualizado em {formatDate(lastUpdated)}
+                      </Typography>
+                    </>
                   )}
                 </Stack>
               </Paper>

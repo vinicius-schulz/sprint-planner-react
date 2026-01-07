@@ -15,6 +15,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import LaunchIcon from '@mui/icons-material/Launch';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createNewSprint, ensureActiveSprint, getProjectMeta, listSprintSummaries, removeSprint } from '../app/sprintLibrary';
 import { useAppDispatch } from '../app/hooks';
@@ -48,10 +49,19 @@ export function SprintListPage() {
     navigate(`/plan/${id}`);
   };
 
-  const handleOpen = (id: string) => {
+  const openSprintContext = (id: string) => {
     const { state } = ensureActiveSprint(id);
     hydrateStoreFromState(dispatch, state);
+  };
+
+  const handlePlan = (id: string) => {
+    openSprintContext(id);
     navigate(`/plan/${id}`);
+  };
+
+  const handleFollowUp = (id: string) => {
+    openSprintContext(id);
+    navigate(`/acomp/${id}`);
   };
 
   const handleDelete = (id: string) => {
@@ -75,7 +85,7 @@ export function SprintListPage() {
           <Typography variant="h4" sx={{ mb: 0 }}>
             Sprints {projectName ? `· ${projectName}` : ''}
           </Typography>
-          <Typography variant="body2" color="text.secondary">Selecione ou crie uma sprint deste projeto.</Typography>
+          <Typography variant="body2" color="text.secondary">Selecione uma sprint para planejar ou acompanhar.</Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={handleCreate}>
           Nova sprint
@@ -91,12 +101,22 @@ export function SprintListPage() {
                   <ListItem alignItems="flex-start" secondaryAction={(
                     <Stack direction="row" spacing={1}>
                       <Button
-                        variant="outlined"
+                        variant="contained"
                         size="small"
                         startIcon={<LaunchIcon />}
-                        onClick={() => handleOpen(sprint.id)}
+                        onClick={() => handlePlan(sprint.id)}
                       >
-                        Abrir
+                        Planejar
+                      </Button>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        startIcon={<VisibilityOutlinedIcon />}
+                        onClick={() => handleFollowUp(sprint.id)}
+                        disabled={sprint.status === 'editing'}
+                        color="secondary"
+                      >
+                        Acompanhar
                       </Button>
                       <Button
                         variant="text"

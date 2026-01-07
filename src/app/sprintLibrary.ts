@@ -293,6 +293,11 @@ export const getSprintState = (id: string) => {
   return state ? cloneState(state) : undefined;
 };
 
+export const getSprintMeta = (id: string) => {
+  const library = readLibrary();
+  return library.sprints[id]?.meta;
+};
+
 export const listProjects = (): ProjectMeta[] => {
   const library = readLibrary();
   return Object.values(library.projects).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));

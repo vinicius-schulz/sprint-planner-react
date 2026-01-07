@@ -3,14 +3,10 @@ import { NavLink } from 'react-router-dom';
 import logo from '../assets/logo.svg';
 
 interface HeaderProps {
-  active: 'dashboard' | 'projects' | 'sprints' | 'plan' | 'acomp';
-  followUpEnabled?: boolean;
-  sprintId?: string;
-  projectId?: string;
-  projectName?: string;
+  active: 'dashboard' | 'projects';
 }
 
-export function Header({ active, followUpEnabled = true, sprintId, projectId, projectName }: HeaderProps) {
+export function Header({ active }: HeaderProps) {
   return (
     <AppBar position="fixed" color="default" elevation={1}>
       <Toolbar sx={{ gap: 1, flexWrap: 'wrap' }}>
@@ -24,23 +20,6 @@ export function Header({ active, followUpEnabled = true, sprintId, projectId, pr
           <Typography variant="h6" sx={{ mb: 0 }}>
             Calculadora de Capacidade Scrum
           </Typography>
-          {projectName && (
-            <Box
-              component="span"
-              sx={{
-                ml: 1,
-                px: 1,
-                py: 0.5,
-                borderRadius: 1,
-                bgcolor: 'primary.main',
-                color: 'primary.contrastText',
-                fontSize: 12,
-                fontWeight: 700,
-              }}
-            >
-              Projeto: {projectName}
-            </Box>
-          )}
         </Stack>
         <Stack direction="row" spacing={1}>
           <Button
@@ -58,38 +37,6 @@ export function Header({ active, followUpEnabled = true, sprintId, projectId, pr
             color="primary"
           >
             Projetos
-          </Button>
-          <Button
-            component={NavLink}
-            to={projectId ? `/projects/${projectId}/sprints` : '/projects'}
-            variant={active === 'sprints' ? 'contained' : 'text'}
-            color="primary"
-            disabled={!projectId}
-          >
-            Sprints
-          </Button>
-          <Button
-            component={NavLink}
-            to={sprintId ? `/plan/${sprintId}` : '/sprints'}
-            variant={active === 'plan' ? 'contained' : 'text'}
-            color="primary"
-            disabled={!sprintId}
-          >
-            Planejamento
-          </Button>
-          <Button
-            component={NavLink}
-            to={sprintId ? `/acomp/${sprintId}` : '/sprints'}
-            variant={active === 'acomp' ? 'contained' : 'text'}
-            color="primary"
-            disabled={!followUpEnabled || !sprintId}
-            onClick={(e) => {
-              if (!followUpEnabled || !sprintId) {
-                e.preventDefault();
-              }
-            }}
-          >
-            Acompanhamento
           </Button>
         </Stack>
       </Toolbar>

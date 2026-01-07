@@ -20,10 +20,8 @@ import { ProjectModal } from '../components/ProjectModal';
 import type { ProjectModalData } from '../components/ProjectModal';
 import {
   createProject,
-  getActiveProjectId,
   listProjects,
   removeProject,
-  setActiveProjectId,
   updateProject,
 } from '../app/sprintLibrary';
 
@@ -32,7 +30,6 @@ const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateStri
 export function ProjectListPage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState(() => listProjects());
-  const [activeProjectId, setActiveProjectIdState] = useState<string | undefined>(() => getActiveProjectId());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const editingProject = editingProjectId ? projects.find((p) => p.id === editingProjectId) : undefined;
@@ -55,8 +52,6 @@ export function ProjectListPage() {
   };
 
   const handleOpen = (id: string) => {
-    setActiveProjectId(id);
-    setActiveProjectIdState(id);
     navigate(`/projects/${id}/sprints`);
   };
 
@@ -67,7 +62,6 @@ export function ProjectListPage() {
     if (!confirmed) return;
     removeProject(id);
     refresh();
-    setActiveProjectIdState(getActiveProjectId());
   };
 
   const handleSave = (data: ProjectModalData) => {
@@ -75,8 +69,6 @@ export function ProjectListPage() {
       updateProject({ ...editingProject, ...data });
     } else {
       const project = createProject(data);
-      setActiveProjectId(project.id);
-      setActiveProjectIdState(project.id);
       navigate(`/projects/${project.id}/sprints`);
     }
     refresh();
@@ -135,9 +127,6 @@ export function ProjectListPage() {
                       primary={
                         <Stack direction="row" spacing={1} alignItems="center">
                           <Typography variant="subtitle1">{project.name}</Typography>
-                          {activeProjectId === project.id && (
-                            <Chip size="small" color="primary" label="Selecionado" />
-                          )}
                           <Chip
                             size="small"
                             label={

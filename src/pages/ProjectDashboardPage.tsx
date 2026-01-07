@@ -3,37 +3,23 @@ import { Box, Button, Stack, Typography } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import { ProjectDashboard } from '../components/ProjectDashboard';
 import {
-  getActiveProjectId,
-  getActiveSprintId,
   listProjects,
-  setActiveProjectId,
 } from '../app/sprintLibrary';
 
 export function ProjectDashboardPage() {
   const navigate = useNavigate();
   const [projects] = useState(() => listProjects());
-  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(() => getActiveProjectId());
-  const activeSprintId = getActiveSprintId();
+  const [selectedProjectId, setSelectedProjectId] = useState<'all' | string>('all');
 
   useEffect(() => {
-    if (!projects.length) {
-      setSelectedProjectId(undefined);
-      return;
-    }
-    const active = getActiveProjectId();
-    const candidate = selectedProjectId ?? active;
-    const fallback = projects.find((p) => p.id === candidate)?.id ?? projects[0].id;
-    if (fallback !== selectedProjectId) {
-      setSelectedProjectId(fallback);
-    }
-    if (fallback && fallback !== active) {
-      setActiveProjectId(fallback);
+    if (selectedProjectId === 'all') return;
+    if (!projects.find((project) => project.id === selectedProjectId)) {
+      setSelectedProjectId('all');
     }
   }, [projects, selectedProjectId]);
 
-  const handleSelectProject = (id: string) => {
+  const handleSelectProject = (id: 'all' | string) => {
     setSelectedProjectId(id);
-    setActiveProjectId(id);
   };
 
   return (
@@ -54,7 +40,6 @@ export function ProjectDashboardPage() {
         projects={projects}
         selectedProjectId={selectedProjectId}
         onSelectProject={handleSelectProject}
-        activeSprintId={activeSprintId}
       />
 
       {!projects.length && (

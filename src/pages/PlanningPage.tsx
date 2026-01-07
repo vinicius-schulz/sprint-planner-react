@@ -16,7 +16,7 @@ import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { useEnsureActiveSprint } from '../app/useEnsureActiveSprint';
-import { getActiveProjectId } from '../app/sprintLibrary';
+import { getSprintMeta } from '../app/sprintLibrary';
 import { SprintTab } from '../features/sprint/SprintTab';
 import { EventsTab } from '../features/events/EventsTab';
 import { TeamTab } from '../features/members/TeamTab';
@@ -43,7 +43,7 @@ export function PlanningPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { sprintId } = useParams<{ sprintId: string }>();
-  const projectId = getActiveProjectId();
+  const projectId = sprintId ? getSprintMeta(sprintId)?.projectId : undefined;
   const planningStatus = useAppSelector((state) => state.planningLifecycle.status);
   const planningLocked = planningStatus !== 'editing';
 

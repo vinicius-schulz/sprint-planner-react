@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -18,11 +18,9 @@ import LaunchIcon from '@mui/icons-material/Launch';
 import { useNavigate } from 'react-router-dom';
 import { ProjectModal } from '../components/ProjectModal';
 import type { ProjectModalData } from '../components/ProjectModal';
-import { ProjectDashboard } from '../components/ProjectDashboard';
 import {
   createProject,
   getActiveProjectId,
-  getActiveSprintId,
   listProjects,
   removeProject,
   setActiveProjectId,
@@ -34,8 +32,7 @@ const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateStri
 export function ProjectListPage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState(() => listProjects());
-  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(() => getActiveProjectId());
-  const activeSprintId = getActiveSprintId();
+  const [activeProjectId, setActiveProjectIdState] = useState<string | undefined>(() => getActiveProjectId());
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const editingProject = editingProjectId ? projects.find((p) => p.id === editingProjectId) : undefined;
@@ -45,27 +42,6 @@ export function ProjectListPage() {
     const next = listProjects();
     setProjects(next);
     return next;
-  };
-
-  useEffect(() => {
-    if (!projects.length) {
-      setSelectedProjectId(undefined);
-      return;
-    }
-    const active = getActiveProjectId();
-    const candidate = selectedProjectId ?? active;
-    const fallback = projects.find((p) => p.id === candidate)?.id ?? projects[0].id;
-    if (fallback !== selectedProjectId) {
-      setSelectedProjectId(fallback);
-    }
-    if (fallback && fallback !== active) {
-      setActiveProjectId(fallback);
-    }
-  }, [projects, selectedProjectId]);
-
-  const handleSelectProject = (id: string) => {
-    setSelectedProjectId(id);
-    setActiveProjectId(id);
   };
 
   const handleOpenCreate = () => {
@@ -80,7 +56,7 @@ export function ProjectListPage() {
 
   const handleOpen = (id: string) => {
     setActiveProjectId(id);
-    setSelectedProjectId(id);
+    setActiveProjectIdState(id);
     navigate(`/projects/${id}/sprints`);
   };
 
@@ -90,14 +66,8 @@ export function ProjectListPage() {
     const confirmed = window.confirm(`Excluir ${name}? As sprints ligadas a este projeto também serão removidas.`);
     if (!confirmed) return;
     removeProject(id);
-    const next = refresh();
-    if (selectedProjectId === id) {
-      const fallback = next[0]?.id;
-      setSelectedProjectId(fallback);
-      if (fallback) {
-        setActiveProjectId(fallback);
-      }
-    }
+    refresh();
+    setActiveProjectIdState(getActiveProjectId());
   };
 
   const handleSave = (data: ProjectModalData) => {
@@ -106,7 +76,7 @@ export function ProjectListPage() {
     } else {
       const project = createProject(data);
       setActiveProjectId(project.id);
-      setSelectedProjectId(project.id);
+      setActiveProjectIdState(project.id);
       navigate(`/projects/${project.id}/sprints`);
     }
     refresh();
@@ -124,13 +94,6 @@ export function ProjectListPage() {
           Novo projeto
         </Button>
       </Box>
-
-      <ProjectDashboard
-        projects={projects}
-        selectedProjectId={selectedProjectId}
-        onSelectProject={handleSelectProject}
-        activeSprintId={activeSprintId}
-      />
 
       <Card>
         <CardContent>
@@ -172,7 +135,7 @@ export function ProjectListPage() {
                       primary={
                         <Stack direction="row" spacing={1} alignItems="center">
                           <Typography variant="subtitle1">{project.name}</Typography>
-                          {selectedProjectId === project.id && (
+                          {activeProjectId === project.id && (
                             <Chip size="small" color="primary" label="Selecionado" />
                           )}
                           <Chip

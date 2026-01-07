@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom';
 import logo from '../assets/logo.svg';
 
 interface HeaderProps {
-  active: 'projects' | 'sprints' | 'plan' | 'acomp';
+  active: 'dashboard' | 'projects' | 'sprints' | 'plan' | 'acomp';
   followUpEnabled?: boolean;
   sprintId?: string;
   projectId?: string;
@@ -43,6 +43,14 @@ export function Header({ active, followUpEnabled = true, sprintId, projectId, pr
           )}
         </Stack>
         <Stack direction="row" spacing={1}>
+          <Button
+            component={NavLink}
+            to="/"
+            variant={active === 'dashboard' ? 'contained' : 'text'}
+            color="primary"
+          >
+            Dashboard
+          </Button>
           <Button
             component={NavLink}
             to="/projects"

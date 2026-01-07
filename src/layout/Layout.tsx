@@ -44,11 +44,13 @@ export function Layout() {
   const sprintId = sprintMatch?.[2];
   const projectId = projectMatch?.[1] || getActiveProjectId();
   const projectName = projectId ? getProjectMeta(projectId)?.name : undefined;
-  const active: 'projects' | 'sprints' | 'plan' | 'acomp' = sprintMatch
+  const active: 'dashboard' | 'projects' | 'sprints' | 'plan' | 'acomp' = sprintMatch
     ? (sprintMatch[1] as 'plan' | 'acomp')
-    : location.pathname.startsWith('/projects')
-      ? (projectMatch?.[1] ? 'sprints' : 'projects')
-      : 'projects';
+    : location.pathname === '/'
+      ? 'dashboard'
+      : location.pathname.startsWith('/projects')
+        ? (projectMatch?.[1] ? 'sprints' : 'projects')
+        : 'projects';
 
   return (
     <>

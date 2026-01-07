@@ -19,8 +19,8 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { addMember, removeMember, updateMember } from './membersSlice';
-import { renameAssignee } from '../tasks/tasksSlice';
+import { addMember, removeMember, updateMember } from '../../app/store/slices/membersSlice';
+import { renameAssignee } from '../../app/store/slices/tasksSlice';
 import { validateMember } from '../../domain/services/validators';
 import { computeMemberCapacity, selectWorkingHours } from '../../domain/services/capacityService';
 import type { Member, MemberEvent } from '../../domain/types';

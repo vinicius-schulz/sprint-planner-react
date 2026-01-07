@@ -2,7 +2,7 @@ import { useMemo, useState, useEffect, useCallback } from 'react';
 import type { DragEvent } from 'react';
 import { Alert, Card, CardContent, Typography } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { addTask, removeTask, replaceTasks, setComputedTasks, updateTask } from './tasksSlice';
+import { addTask, removeTask, replaceTasks, setComputedTasks, updateTask } from '../../app/store/slices/tasksSlice';
 import { validateTask } from '../../domain/services/validators';
 import { computeTaskSchedules, selectTeamCapacity } from '../../domain/services/capacityService';
 import type { TaskItem, SchedulingStrategy } from '../../domain/types';

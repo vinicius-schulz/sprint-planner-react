@@ -26,8 +26,8 @@ import { NewSchedulePanel } from '../components/NewSchedulePanel';
 import { ReportExportButton } from '../components/ReportExport';
 import { ConfigTab } from '../features/config/ConfigTab';
 import { ImportExportTab } from '../features/importExport/ImportExportTab';
-import { reopenPlanning } from '../features/review/planningLifecycleSlice';
-import { resetFollowUpData } from '../features/tasks/tasksSlice';
+import { reopenPlanning } from '../app/store/slices/planningLifecycleSlice';
+import { resetFollowUpData } from '../app/store/slices/tasksSlice';
 import { ReviewTab, type PlanningStepKey } from '../features/review/ReviewTab';
 
 const taskManageEventName = 'task-manage-open';

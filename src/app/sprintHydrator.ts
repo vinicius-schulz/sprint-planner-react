@@ -1,10 +1,10 @@
-import { updateSprint } from '../features/sprint/sprintSlice';
-import { replaceCalendar } from '../features/calendar/calendarSlice';
-import { replaceEvents } from '../features/events/eventsSlice';
-import { replaceMembers } from '../features/members/membersSlice';
-import { replaceTasks } from '../features/tasks/tasksSlice';
-import { updateConfig } from '../features/config/configSlice';
-import { setPlanningLifecycleState } from '../features/review/planningLifecycleSlice';
+import { updateSprint } from './store/slices/sprintSlice';
+import { replaceCalendar } from './store/slices/calendarSlice';
+import { replaceEvents } from './store/slices/eventsSlice';
+import { replaceMembers } from './store/slices/membersSlice';
+import { replaceTasks } from './store/slices/tasksSlice';
+import { updateConfig } from './store/slices/configSlice';
+import { setPlanningLifecycleState } from './store/slices/planningLifecycleSlice';
 import type { RootPersistedState } from '../domain/types';
 import type { AppDispatch } from './store';
 

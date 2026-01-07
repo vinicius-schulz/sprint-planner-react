@@ -17,7 +17,7 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { addEvent, removeEvent } from './eventsSlice';
+import { addEvent, removeEvent } from '../../app/store/slices/eventsSlice';
 import { validateEvent } from '../../domain/services/validators';
 import type { EventType } from '../../domain/types';
 import styles from './EventsTab.module.css';

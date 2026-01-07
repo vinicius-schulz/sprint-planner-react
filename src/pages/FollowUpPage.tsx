@@ -4,7 +4,7 @@ import { useAppDispatch, useAppSelector } from '../app/hooks';
 import { ReportExportButton } from '../components/ReportExport';
 import { FollowUpView } from '../components/FollowUpView';
 import { useEnsureActiveSprint } from '../app/useEnsureActiveSprint';
-import { finalizePlanning, reopenFollowUp } from '../features/review/planningLifecycleSlice';
+import { finalizePlanning, reopenFollowUp } from '../app/store/slices/planningLifecycleSlice';
 
 export function FollowUpPage() {
   useEnsureActiveSprint();

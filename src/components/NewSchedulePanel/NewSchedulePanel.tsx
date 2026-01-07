@@ -12,13 +12,13 @@ import {
   Typography,
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { resetCalendar } from '../../features/calendar/calendarSlice';
-import { resetEvents } from '../../features/events/eventsSlice';
-import { resetMembers } from '../../features/members/membersSlice';
-import { resetConfig } from '../../features/config/configSlice';
-import { replaceTasks, resetTasks } from '../../features/tasks/tasksSlice';
-import { resetSprint } from '../../features/sprint/sprintSlice';
-import { resetPlanningLifecycle } from '../../features/review/planningLifecycleSlice';
+import { resetCalendar } from '../../app/store/slices/calendarSlice';
+import { resetEvents } from '../../app/store/slices/eventsSlice';
+import { resetMembers } from '../../app/store/slices/membersSlice';
+import { resetConfig } from '../../app/store/slices/configSlice';
+import { replaceTasks, resetTasks } from '../../app/store/slices/tasksSlice';
+import { resetSprint } from '../../app/store/slices/sprintSlice';
+import { resetPlanningLifecycle } from '../../app/store/slices/planningLifecycleSlice';
 import { AppSnackbar } from '../Toast';
 import styles from './NewSchedulePanel.module.css';
 

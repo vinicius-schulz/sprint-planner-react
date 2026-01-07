@@ -6,7 +6,7 @@ import {
   addManualNonWorkingDay,
   removeManualNonWorkingDay,
   addRemovedWeekend,
-} from './calendarSlice';
+} from '../../app/store/slices/calendarSlice';
 import { selectWorkingCalendar } from '../../domain/services/capacityService';
 import { validateManualDay } from '../../domain/services/validators';
 import { isWeekend, toDate } from '../../domain/services/dateUtils';

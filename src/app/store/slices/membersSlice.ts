@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { Member } from '../../domain/types';
+import type { Member } from '../../../domain/types';
 
 interface MembersState {
   items: Member[];

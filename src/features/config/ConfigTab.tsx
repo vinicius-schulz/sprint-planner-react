@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Alert, Button, Card, CardContent, TextField, Typography } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { updateConfig } from './configSlice';
+import { updateConfig } from '../../app/store/slices/configSlice';
 import type { GlobalConfig } from '../../domain/types';
 import { DEFAULT_CONFIG } from '../../domain/constants';
 import styles from './ConfigTab.module.css';

@@ -1,7 +1,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import { EMPTY_SPRINT } from '../../domain/constants';
-import type { SprintState } from '../../domain/types';
+import { EMPTY_SPRINT } from '../../../domain/constants';
+import type { SprintState } from '../../../domain/types';
 
 const initialState: SprintState = { ...EMPTY_SPRINT };
 

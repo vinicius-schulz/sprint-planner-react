@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { updateSprint } from './sprintSlice';
+import { updateSprint } from '../../app/store/slices/sprintSlice';
 import { validateSprint } from '../../domain/services/validators';
 import { selectWorkingCalendar, selectWorkingHours } from '../../domain/services/capacityService';
 import { buildDaySchedules, computeDayHours } from '../../domain/services/workingCalendar';
-import { setDaySchedules, updateDaySchedule } from '../calendar/calendarSlice';
+import { setDaySchedules, updateDaySchedule } from '../../app/store/slices/calendarSlice';
 import { formatHoursToClock } from '../../domain/services/timeFormat';
 import {
   TextField,

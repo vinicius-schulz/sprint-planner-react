@@ -1,6 +1,6 @@
 import { createSlice, type PayloadAction } from '@reduxjs/toolkit';
-import { INITIAL_PLANNING_LIFECYCLE_STATE } from '../../domain/constants';
-import type { PlanningLifecycleState } from '../../domain/types';
+import { INITIAL_PLANNING_LIFECYCLE_STATE } from '../../../domain/constants';
+import type { PlanningLifecycleState } from '../../../domain/types';
 
 const initialState: PlanningLifecycleState = { ...INITIAL_PLANNING_LIFECYCLE_STATE };
 

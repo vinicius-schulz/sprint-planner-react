@@ -9,13 +9,13 @@ import {
   Typography,
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { resetFollowUpData, updateTask } from '../../features/tasks/tasksSlice';
+import { resetFollowUpData, updateTask } from '../../app/store/slices/tasksSlice';
 import type { TaskItem } from '../../domain/types';
 import { formatMinutesToClock } from '../../domain/services/timeFormat';
 import { GanttTimelineFrappe } from '../GanttTimelineFrappe';
 import { TasksTable } from '../../features/tasks/components/TasksTable';
 import { TaskManageDialog } from '../../features/tasks/components/TaskManageDialog';
-import { reopenPlanning } from '../../features/review/planningLifecycleSlice';
+import { reopenPlanning } from '../../app/store/slices/planningLifecycleSlice';
 import styles from './FollowUpView.module.css';
 
 const formatDateTimeBr = (value?: string) => {

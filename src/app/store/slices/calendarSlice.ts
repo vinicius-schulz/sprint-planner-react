@@ -1,6 +1,6 @@
 import { createSlice } from '@reduxjs/toolkit';
 import type { PayloadAction } from '@reduxjs/toolkit';
-import type { CalendarState, DateString, DaySchedule } from '../../domain/types';
+import type { CalendarState, DateString, DaySchedule } from '../../../domain/types';
 
 const initialState: CalendarState = {
   nonWorkingDaysManual: [],

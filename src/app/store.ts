@@ -1,11 +1,11 @@
 import { configureStore } from '@reduxjs/toolkit';
-import sprintReducer from '../features/sprint/sprintSlice';
-import calendarReducer from '../features/calendar/calendarSlice';
-import eventsReducer from '../features/events/eventsSlice';
-import membersReducer from '../features/members/membersSlice';
-import tasksReducer from '../features/tasks/tasksSlice';
-import configReducer from '../features/config/configSlice';
-import planningLifecycleReducer from '../features/review/planningLifecycleSlice';
+import sprintReducer from './store/slices/sprintSlice';
+import calendarReducer from './store/slices/calendarSlice';
+import eventsReducer from './store/slices/eventsSlice';
+import membersReducer from './store/slices/membersSlice';
+import tasksReducer from './store/slices/tasksSlice';
+import configReducer from './store/slices/configSlice';
+import planningLifecycleReducer from './store/slices/planningLifecycleSlice';
 import { saveActiveSprintState, getActiveSprintId } from './sprintLibrary';
 import type { RootPersistedState } from '../domain/types';
 

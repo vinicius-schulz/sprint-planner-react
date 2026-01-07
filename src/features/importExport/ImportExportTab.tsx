@@ -1,12 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Alert, Button, Card, CardContent, Typography } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { updateSprint } from '../sprint/sprintSlice';
-import { replaceCalendar } from '../calendar/calendarSlice';
-import { replaceEvents } from '../events/eventsSlice';
-import { replaceMembers } from '../members/membersSlice';
-import { replaceTasks } from '../tasks/tasksSlice';
-import { updateConfig } from '../config/configSlice';
+import { updateSprint } from '../../app/store/slices/sprintSlice';
+import { replaceCalendar } from '../../app/store/slices/calendarSlice';
+import { replaceEvents } from '../../app/store/slices/eventsSlice';
+import { replaceMembers } from '../../app/store/slices/membersSlice';
+import { replaceTasks } from '../../app/store/slices/tasksSlice';
+import { updateConfig } from '../../app/store/slices/configSlice';
 import type { RootPersistedState } from '../../domain/types';
 import styles from './ImportExportTab.module.css';
 

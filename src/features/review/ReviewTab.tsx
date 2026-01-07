@@ -20,7 +20,7 @@ import { selectTaskSchedules, selectTeamCapacity } from '../../domain/services/c
 import { savePlanningToExternalApi } from '../../domain/services/externalApiMock';
 import { GanttTimelineFrappe } from '../../components/GanttTimelineFrappe';
 import { AppSnackbar } from '../../components/Toast';
-import { closePlanning } from './planningLifecycleSlice';
+import { closePlanning } from '../../app/store/slices/planningLifecycleSlice';
 import type { TaskItem } from '../../domain/types';
 
 export type PlanningStepKey = 'sprint' | 'events' | 'team' | 'tasks' | 'review';

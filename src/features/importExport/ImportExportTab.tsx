@@ -22,7 +22,7 @@ type ImportPayload = {
   globalConfig?: RootPersistedState['config']['value'];
 };
 
-const VERSION = 'Calculadora de Capacidade Scrum – v1.0';
+const VERSION = 'SprintPulse – v1.0';
 
 export function ImportExportTab() {
   const dispatch = useAppDispatch();
@@ -48,7 +48,7 @@ export function ImportExportTab() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = 'scrum-capacidade.json';
+    link.download = 'sprintpulse.json';
     link.click();
     URL.revokeObjectURL(url);
   };

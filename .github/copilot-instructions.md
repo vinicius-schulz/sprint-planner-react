@@ -2,7 +2,6 @@
 
 - Stack: React + Vite + TypeScript + Redux Toolkit + MUI; entry in [src/main.tsx](src/main.tsx) wraps [src/App.tsx](src/App.tsx) with theme and store.
 - Run/build: `npm install`, `npm run dev`, `npm run build` (see [README.md](README.md)). No automated tests.
-- State: single RTK store in [src/app/store.ts](src/app/store.ts); hydration/persist via [src/app/persistence.ts](src/app/persistence.ts) with localStorage key `scrum-capacity-state-v1` and 300ms debounce.
 - Types/defaults: domain models and defaults in [src/domain/types.ts](src/domain/types.ts) and [src/domain/constants.ts](src/domain/constants.ts); `GlobalConfig` controls SP scale, overload thresholds, work periods, `schedulingStrategy` (default EDD), factors, and `storyPointsPerHour`.
 - Calendar: working days built in [src/domain/services/capacityService.ts](src/domain/services/capacityService.ts) from `calendar.daySchedules` when present; otherwise sprint range minus weekends plus manual overrides. Day schedules created/edited in [src/features/sprint/SprintTab.tsx](src/features/sprint/SprintTab.tsx) using [buildDaySchedules](src/domain/services/workingCalendar.ts).
 - Working hours: [computeWorkingHours](src/domain/services/capacityService.ts) sums per-day periods (or `dailyWorkHours`) and subtracts event minutes; recurring events deduct on every working day and floors at 0.

@@ -18,7 +18,7 @@ export function Header({ active }: HeaderProps) {
             sx={{ width: 40, height: 40, borderRadius: 2, boxShadow: 1, bgcolor: 'background.paper' }}
           />
           <Typography variant="h6" sx={{ mb: 0 }}>
-            Calculadora de Capacidade Scrum
+            SprintPulse
           </Typography>
         </Stack>
         <Stack direction="row" spacing={1}>

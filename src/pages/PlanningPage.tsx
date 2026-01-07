@@ -147,7 +147,7 @@ export function PlanningPage() {
             )}
           />
           <Button variant="contained" onClick={startConfiguration} disabled={planningLocked}>
-            Iniciar configuração
+            Resetar
           </Button>
         </Stack>
       </Box>

@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -18,20 +18,55 @@ import LaunchIcon from '@mui/icons-material/Launch';
 import { useNavigate } from 'react-router-dom';
 import { ProjectModal } from '../components/ProjectModal';
 import type { ProjectModalData } from '../components/ProjectModal';
-import { createProject, getActiveProjectId, listProjects, removeProject, setActiveProjectId, updateProject } from '../app/sprintLibrary';
+import { ProjectDashboard } from '../components/ProjectDashboard';
+import {
+  createProject,
+  getActiveProjectId,
+  getActiveSprintId,
+  listProjects,
+  removeProject,
+  setActiveProjectId,
+  updateProject,
+} from '../app/sprintLibrary';
 
 const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString('pt-BR') : '');
 
 export function ProjectListPage() {
   const navigate = useNavigate();
   const [projects, setProjects] = useState(() => listProjects());
-  const activeProjectId = getActiveProjectId();
+  const [selectedProjectId, setSelectedProjectId] = useState<string | undefined>(() => getActiveProjectId());
+  const activeSprintId = getActiveSprintId();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
   const editingProject = editingProjectId ? projects.find((p) => p.id === editingProjectId) : undefined;
 
   const hasProjects = useMemo(() => projects.length > 0, [projects]);
-  const refresh = () => setProjects(listProjects());
+  const refresh = () => {
+    const next = listProjects();
+    setProjects(next);
+    return next;
+  };
+
+  useEffect(() => {
+    if (!projects.length) {
+      setSelectedProjectId(undefined);
+      return;
+    }
+    const active = getActiveProjectId();
+    const candidate = selectedProjectId ?? active;
+    const fallback = projects.find((p) => p.id === candidate)?.id ?? projects[0].id;
+    if (fallback !== selectedProjectId) {
+      setSelectedProjectId(fallback);
+    }
+    if (fallback && fallback !== active) {
+      setActiveProjectId(fallback);
+    }
+  }, [projects, selectedProjectId]);
+
+  const handleSelectProject = (id: string) => {
+    setSelectedProjectId(id);
+    setActiveProjectId(id);
+  };
 
   const handleOpenCreate = () => {
     setEditingProjectId(null);
@@ -45,6 +80,7 @@ export function ProjectListPage() {
 
   const handleOpen = (id: string) => {
     setActiveProjectId(id);
+    setSelectedProjectId(id);
     navigate(`/projects/${id}/sprints`);
   };
 
@@ -54,7 +90,14 @@ export function ProjectListPage() {
     const confirmed = window.confirm(`Excluir ${name}? As sprints ligadas a este projeto também serão removidas.`);
     if (!confirmed) return;
     removeProject(id);
-    refresh();
+    const next = refresh();
+    if (selectedProjectId === id) {
+      const fallback = next[0]?.id;
+      setSelectedProjectId(fallback);
+      if (fallback) {
+        setActiveProjectId(fallback);
+      }
+    }
   };
 
   const handleSave = (data: ProjectModalData) => {
@@ -63,6 +106,7 @@ export function ProjectListPage() {
     } else {
       const project = createProject(data);
       setActiveProjectId(project.id);
+      setSelectedProjectId(project.id);
       navigate(`/projects/${project.id}/sprints`);
     }
     refresh();
@@ -80,6 +124,13 @@ export function ProjectListPage() {
           Novo projeto
         </Button>
       </Box>
+
+      <ProjectDashboard
+        projects={projects}
+        selectedProjectId={selectedProjectId}
+        onSelectProject={handleSelectProject}
+        activeSprintId={activeSprintId}
+      />
 
       <Card>
         <CardContent>
@@ -121,7 +172,7 @@ export function ProjectListPage() {
                       primary={
                         <Stack direction="row" spacing={1} alignItems="center">
                           <Typography variant="subtitle1">{project.name}</Typography>
-                          {activeProjectId === project.id && (
+                          {selectedProjectId === project.id && (
                             <Chip size="small" color="primary" label="Selecionado" />
                           )}
                           <Chip

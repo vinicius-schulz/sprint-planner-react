@@ -38,6 +38,48 @@ type SprintWithState = {
 
 const formatDate = (value?: string) => (value ? new Date(value).toLocaleDateString('pt-BR') : '-');
 
+const toLocalISODate = (date: Date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const normalizeTime = (time?: string, fallback = '23:59:59') => {
+  if (!time) return fallback;
+  return time.length === 5 ? `${time}:00` : time;
+};
+
+const parseDueDate = (value: string) => {
+  if (!value) return null;
+  const trimmed = value.trim();
+
+  const brMatch = trimmed.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s(\d{2}:\d{2})(?::\d{2})?)?/);
+  if (brMatch) {
+    const [, day, month, year, time] = brMatch;
+    const normalized = `${year}-${month}-${day}T${normalizeTime(time)}`;
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}:\d{2})(?::\d{2})?)?/);
+  if (isoMatch) {
+    const [, year, month, day, time] = isoMatch;
+    const normalized = `${year}-${month}-${day}T${normalizeTime(time)}`;
+    const parsed = new Date(normalized);
+    return Number.isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const parsed = new Date(trimmed);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const formatDueDate = (value?: string) => {
+  if (!value) return '-';
+  const parsed = parseDueDate(value);
+  return parsed ? parsed.toLocaleDateString('pt-BR') : value;
+};
+
 const sprintStatusLabel = (status: PlanningLifecycleState['status']) => (
   status === 'closed' ? 'Fechada' : status === 'followup' ? 'Em acompanhamento' : 'Em edição'
 );
@@ -59,12 +101,13 @@ type MetricCardProps = {
   value: string;
   hint?: string;
   children?: ReactNode;
+  valueColor?: 'text.primary' | 'error' | 'warning' | 'info' | 'success';
 };
 
-const MetricCard = ({ label, value, hint, children }: MetricCardProps) => (
+const MetricCard = ({ label, value, hint, children, valueColor = 'text.primary' }: MetricCardProps) => (
   <Paper elevation={1} className={styles.metricCard}>
     <Typography variant="subtitle2">{label}</Typography>
-    <Typography variant="h5">{value}</Typography>
+    <Typography variant="h5" color={valueColor}>{value}</Typography>
     {hint && <Typography variant="body2" color="text.secondary">{hint}</Typography>}
     {children}
   </Paper>
@@ -99,6 +142,8 @@ export function ProjectDashboard({
   ), [sprintSummaries]);
 
   const aggregates = useMemo(() => {
+    const now = new Date();
+    const todayISO = toLocalISODate(now);
     const memberNames = new Set<string>();
     let totalTasks = 0;
     let tasksDone = 0;
@@ -110,6 +155,10 @@ export function ProjectDashboard({
     let workingHoursTotal = 0;
     let workingDaysTotal = 0;
     let capacityStoryPoints = 0;
+    let dueTodayCount = 0;
+    let noDueDateCount = 0;
+    let overdueStoryPoints = 0;
+    const overdueTasks: Array<{ id: string; name: string; dueDate: string; assignee?: string }> = [];
 
     sprintsWithState.forEach(({ state }) => {
       state.members.items.forEach((member) => memberNames.add(member.name));
@@ -140,8 +189,32 @@ export function ProjectDashboard({
         if (status === 'done') {
           doneStoryPoints += sp;
         }
+
+        if (status !== 'done') {
+          const dueReference = task.dueDate || task.computedEndDate;
+          if (!dueReference) {
+            noDueDateCount += 1;
+          } else {
+            const dueDateValue = parseDueDate(dueReference);
+            if (!dueDateValue) {
+              noDueDateCount += 1;
+            } else if (dueDateValue.getTime() < now.getTime()) {
+              overdueTasks.push({
+                id: task.id,
+                name: task.name,
+                dueDate: dueReference,
+                assignee: task.assigneeMemberName,
+              });
+              overdueStoryPoints += sp;
+            } else if (toLocalISODate(dueDateValue) === todayISO) {
+              dueTodayCount += 1;
+            }
+          }
+        }
       });
     });
+
+    overdueTasks.sort((a, b) => a.dueDate.localeCompare(b.dueDate));
 
     return {
       membersCount: memberNames.size,
@@ -155,6 +228,10 @@ export function ProjectDashboard({
       workingHoursTotal,
       workingDaysTotal,
       capacityStoryPoints,
+      overdueTasks,
+      overdueStoryPoints,
+      dueTodayCount,
+      noDueDateCount,
     };
   }, [sprintsWithState]);
 
@@ -172,6 +249,11 @@ export function ProjectDashboard({
   const capacityUsage = aggregates.capacityStoryPoints
     ? Math.min(100, Math.round((aggregates.totalStoryPoints / aggregates.capacityStoryPoints) * 100))
     : 0;
+  const overdueCount = aggregates.overdueTasks.length;
+  const overdueRate = aggregates.totalTasks
+    ? Math.round((overdueCount / aggregates.totalTasks) * 100)
+    : 0;
+  const overduePreview = aggregates.overdueTasks.slice(0, 3);
 
   return (
     <Card>
@@ -268,6 +350,41 @@ export function ProjectDashboard({
                   <Typography variant="caption" color="text.secondary">
                     {taskProgress}% concluídas
                   </Typography>
+                </MetricCard>
+
+                <MetricCard
+                  label="Tarefas atrasadas"
+                  value={`${overdueCount}`}
+                  hint={`Vencem hoje: ${aggregates.dueTodayCount} · Sem prazo: ${aggregates.noDueDateCount}`}
+                  valueColor={overdueCount > 0 ? 'error' : 'text.primary'}
+                >
+                  {aggregates.totalTasks > 0 && (
+                    <>
+                      <LinearProgress
+                        variant="determinate"
+                        value={overdueRate}
+                        color={overdueCount > 0 ? 'error' : 'primary'}
+                        className={styles.progress}
+                      />
+                      <Typography variant="caption" color="text.secondary">
+                        {overdueRate}% do total
+                      </Typography>
+                    </>
+                  )}
+                  {overdueCount > 0 && (
+                    <div className={styles.overdueList}>
+                      {overduePreview.map((task) => (
+                        <Typography key={task.id} variant="caption" color="text.secondary">
+                          {task.name || 'Sem título'} · {formatDueDate(task.dueDate)}{task.assignee ? ` · ${task.assignee}` : ''}
+                        </Typography>
+                      ))}
+                      {overdueCount > overduePreview.length && (
+                        <Typography variant="caption" color="text.secondary">
+                          +{overdueCount - overduePreview.length} outras atrasadas
+                        </Typography>
+                      )}
+                    </div>
+                  )}
                 </MetricCard>
 
                 <MetricCard

@@ -49,3 +49,9 @@
 .progress {
   margin-top: 8px;
 }
+
+.overdueList {
+  margin-top: 6px;
+  display: grid;
+  gap: 4px;
+}

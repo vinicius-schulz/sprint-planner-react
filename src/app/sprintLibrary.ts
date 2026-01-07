@@ -5,9 +5,17 @@ import * as projectApi from '../services/api/projects';
 import * as sprintApi from '../services/api/sprints';
 
 const LIBRARY_KEY = 'scrum-capacity-library-v1';
-const LEGACY_KEY = 'scrum-capacity-state-v1';
 const DEFAULT_SPRINT_PREFIX = 'sprint';
 const DEFAULT_PROJECT_PREFIX = 'project';
+
+const logStorage = (action: 'get' | 'set', key: string, detail?: Record<string, unknown>) => {
+  console.log('[storage]', {
+    timestamp: new Date().toISOString(),
+    action,
+    key,
+    detail: detail ?? {},
+  });
+};
 
 interface StoredSprintRecord {
   id: string;
@@ -48,58 +56,18 @@ const safeParse = (value: string | null): SprintLibraryPayload | undefined => {
 
 const writeLibrary = (payload: SprintLibraryPayload) => {
   try {
-    localStorage.setItem(LIBRARY_KEY, JSON.stringify(payload));
+    const serialized = JSON.stringify(payload);
+    logStorage('set', LIBRARY_KEY, { scope: 'writeLibrary', bytes: serialized.length });
+    localStorage.setItem(LIBRARY_KEY, serialized);
   } catch (err) {
     console.error('Falha ao salvar biblioteca de sprints', err);
   }
 };
 
-const migrateLegacyState = (): SprintLibraryPayload => {
-  const legacy = safeParse(localStorage.getItem(LEGACY_KEY));
-  if (!legacy || (legacy as unknown as RootPersistedState).sprint === undefined) {
-    const projectId = `${DEFAULT_PROJECT_PREFIX}-1`;
-    return { projects: {}, sprints: {}, activeProjectId: projectId } as SprintLibraryPayload;
-  }
-  const legacyState = legacy as unknown as RootPersistedState;
-  const projectId = `${DEFAULT_PROJECT_PREFIX}-1`;
-  const projectMeta: ProjectMeta = {
-    id: projectId,
-    name: 'Projeto Padrão',
-    status: 'active',
-    updatedAt: new Date().toISOString(),
-    startDate: legacyState.sprint.startDate,
-    endDate: legacyState.sprint.endDate,
-  };
-  const id = `${DEFAULT_SPRINT_PREFIX}-1`;
-  const meta: StoredSprintMeta = {
-    id,
-    title: legacyState.sprint.title,
-    startDate: legacyState.sprint.startDate,
-    endDate: legacyState.sprint.endDate,
-    status: legacyState.planningLifecycle.status,
-    projectId,
-    updatedAt: new Date().toISOString(),
-  };
-  const migrated: SprintLibraryPayload = {
-    activeProjectId: projectId,
-    activeSprintId: id,
-    projects: {
-      [projectId]: projectMeta,
-    },
-    sprints: {
-      [id]: {
-        id,
-        meta,
-        state: legacyState,
-      },
-    },
-  };
-  writeLibrary(migrated);
-  return migrated;
-};
-
 const readLibrary = (): SprintLibraryPayload => {
-  const fromStorage = safeParse(localStorage.getItem(LIBRARY_KEY));
+  const raw = localStorage.getItem(LIBRARY_KEY);
+  logStorage('get', LIBRARY_KEY, { scope: 'readLibrary', status: raw ? 'fetched' : 'empty', bytes: raw?.length });
+  const fromStorage = safeParse(raw);
   if (fromStorage) {
     // ensure projects map exists for older payloads
     const projects = Object.fromEntries(
@@ -116,7 +84,7 @@ const readLibrary = (): SprintLibraryPayload => {
       projects,
     } as SprintLibraryPayload;
   }
-  return migrateLegacyState();
+  return { projects: {}, sprints: {}, activeProjectId: undefined, activeSprintId: undefined } as SprintLibraryPayload;
 };
 
 const touchMeta = (state: RootPersistedState, id: string, projectId: string): StoredSprintMeta => ({

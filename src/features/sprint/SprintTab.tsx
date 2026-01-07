@@ -3,26 +3,18 @@ import { useAppDispatch, useAppSelector } from '../../app/hooks';
 import { updateSprint } from '../../app/store/slices/sprintSlice';
 import { validateSprint } from '../../domain/services/validators';
 import { selectWorkingCalendar, selectWorkingHours } from '../../domain/services/capacityService';
-import { buildDaySchedules, computeDayHours } from '../../domain/services/workingCalendar';
+import { buildDaySchedules } from '../../domain/services/workingCalendar';
 import { setDaySchedules, updateDaySchedule } from '../../app/store/slices/calendarSlice';
-import { formatHoursToClock } from '../../domain/services/timeFormat';
 import {
-  TextField,
   Card,
   CardContent,
   Typography,
-  Stack,
-  Alert,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
-  Switch,
-  FormControlLabel,
 } from '@mui/material';
 import type { DaySchedule } from '../../domain/types';
 import styles from './SprintTab.module.css';
+import { SprintForm } from './components/SprintForm';
+import { SprintMetrics } from './components/SprintMetrics';
+import { SprintDayScheduleTable } from './components/SprintDayScheduleTable';
 
 export function SprintTab() {
   const sprint = useAppSelector((state) => state.sprint);
@@ -37,8 +29,24 @@ export function SprintTab() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setTitle(sprint.title);
+    setStartDate(sprint.startDate);
+    setEndDate(sprint.endDate);
+  }, [sprint.title, sprint.startDate, sprint.endDate]);
+
+  const dateRangeError = useMemo(() => {
+    if (!startDate || !endDate) return null;
+    if (endDate < startDate) return 'A data fim deve ser igual ou posterior à data início.';
+    return null;
+  }, [startDate, endDate]);
+
+  useEffect(() => {
     if (!startDate || !endDate) {
       setError(null);
+      return;
+    }
+    if (dateRangeError) {
+      setError(dateRangeError);
       return;
     }
     const candidate = { title: title || 'Sprint sem título', startDate, endDate };
@@ -53,7 +61,7 @@ export function SprintTab() {
     dispatch(setDaySchedules(generated));
     // calendar.daySchedules intentionally read inside to preserve edits without re-triggering endlessly
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startDate, endDate, title, config, dispatch]);
+  }, [startDate, endDate, title, config, dispatch, dateRangeError]);
 
   const handleToggleNonWorking = (day: DaySchedule, checked: boolean) => {
     dispatch(updateDaySchedule({ ...day, isNonWorking: checked }));
@@ -70,126 +78,38 @@ export function SprintTab() {
 
   const daySchedules = calendar.daySchedules ?? [];
 
-  const totalHoursPreview = useMemo(
-    () => daySchedules.filter((d) => !d.isNonWorking).reduce((sum, day) => sum + computeDayHours(day.periods), 0),
-    [daySchedules],
-  );
-
   return (
     <Card>
       <CardContent>
         <Typography variant="h6" gutterBottom>
           Sprint
         </Typography>
-        <div className={styles.formRow}>
-          <TextField
-            label="Título"
-            fullWidth
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-          />
-          <TextField
-            label="Data início"
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
-          <TextField
-            label="Data fim"
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            InputLabelProps={{ shrink: true }}
-          />
-        </div>
-        {error && <Alert severity="error" className={styles.error}>{error}</Alert>}
-        <div className={styles.metrics}>
-          <Stack spacing={0.5}>
-            <Typography variant="subtitle2">Horas Úteis Calculadas</Typography>
-            <Typography variant="h5">{formatHoursToClock(workingHours)}</Typography>
-          </Stack>
-          <Stack spacing={0.5}>
-            <Typography variant="subtitle2">Dias Úteis</Typography>
-            <Typography variant="h5">{calendarResult.workingDays.length}</Typography>
-          </Stack>
-          <Stack spacing={0.5}>
-            <Typography variant="subtitle2">Horas planeadas (por dia)</Typography>
-            <Typography variant="h5">{formatHoursToClock(totalHoursPreview)}</Typography>
-          </Stack>
-        </div>
-        {daySchedules.length > 0 && (
-          <div className={styles.dayTable}>
-            <Typography variant="subtitle2" gutterBottom>Dias da Sprint</Typography>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell>Data</TableCell>
-                  <TableCell>Período 1 (início/fim)</TableCell>
-                  <TableCell>Período 2 (início/fim)</TableCell>
-                  <TableCell>Horas do dia</TableCell>
-                  <TableCell>Não útil</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {daySchedules.map((day) => {
-                  const [p1, p2] = day.periods;
-                  const hours = computeDayHours(day.periods);
-                  return (
-                    <TableRow key={day.date} className={day.isNonWorking ? styles.nonWorkingRow : undefined}>
-                      <TableCell>{day.date}</TableCell>
-                      <TableCell className={styles.periodCell}>
-                        <TextField
-                          type="time"
-                          size="small"
-                          value={p1?.start ?? ''}
-                          onChange={(e) => handlePeriodChange(day, 0, 'start', e.target.value)}
-                          disabled={day.isNonWorking}
-                        />
-                        <TextField
-                          type="time"
-                          size="small"
-                          value={p1?.end ?? ''}
-                          onChange={(e) => handlePeriodChange(day, 0, 'end', e.target.value)}
-                          disabled={day.isNonWorking}
-                        />
-                      </TableCell>
-                      <TableCell className={styles.periodCell}>
-                        <TextField
-                          type="time"
-                          size="small"
-                          value={p2?.start ?? ''}
-                          onChange={(e) => handlePeriodChange(day, 1, 'start', e.target.value)}
-                          disabled={day.isNonWorking}
-                        />
-                        <TextField
-                          type="time"
-                          size="small"
-                          value={p2?.end ?? ''}
-                          onChange={(e) => handlePeriodChange(day, 1, 'end', e.target.value)}
-                          disabled={day.isNonWorking}
-                        />
-                      </TableCell>
-                      <TableCell>{formatHoursToClock(hours)}</TableCell>
-                      <TableCell>
-                        <FormControlLabel
-                          control={(
-                            <Switch
-                              checked={day.isNonWorking}
-                              onChange={(e) => handleToggleNonWorking(day, e.target.checked)}
-                              size="small"
-                            />
-                          )}
-                          label=""
-                        />
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        )}
+        <SprintForm
+          title={title}
+          startDate={startDate}
+          endDate={endDate}
+          dateRangeError={dateRangeError}
+          error={error}
+          onTitleChange={setTitle}
+          onStartDateChange={setStartDate}
+          onEndDateChange={setEndDate}
+          className={styles.formRow}
+          errorClassName={styles.error}
+        />
+        <SprintMetrics
+          workingHours={workingHours}
+          workingDays={calendarResult.workingDays.length}
+          daySchedules={daySchedules}
+          className={styles.metrics}
+        />
+        <SprintDayScheduleTable
+          daySchedules={daySchedules}
+          onToggleNonWorking={handleToggleNonWorking}
+          onPeriodChange={handlePeriodChange}
+          className={styles.dayTable}
+          periodCellClassName={styles.periodCell}
+          nonWorkingRowClassName={styles.nonWorkingRow}
+        />
       </CardContent>
     </Card>
   );

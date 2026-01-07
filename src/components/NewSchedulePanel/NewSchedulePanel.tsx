@@ -2,13 +2,10 @@ import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import {
   Button,
-  Checkbox,
   Dialog,
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControlLabel,
-  Stack,
   Typography,
 } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
@@ -20,6 +17,7 @@ import { replaceTasks, resetTasks } from '../../app/store/slices/tasksSlice';
 import { resetSprint } from '../../app/store/slices/sprintSlice';
 import { resetPlanningLifecycle } from '../../app/store/slices/planningLifecycleSlice';
 import { AppSnackbar } from '../Toast';
+import { NewScheduleOptions } from './NewScheduleOptions';
 import styles from './NewSchedulePanel.module.css';
 
 type NewSchedulePanelProps = {
@@ -117,27 +115,17 @@ export function NewSchedulePanel({ renderTrigger, openExternal, onCloseExternal,
           <Typography variant="body2" color="text.secondary" gutterBottom>
             Gerencie rapidamente o que manter ou limpar ao iniciar um novo cronograma.
           </Typography>
-          <Stack spacing={2} className={styles.section}>
-            <Typography variant="subtitle1">Novo cronograma</Typography>
-            <Stack direction="row" spacing={2} flexWrap="wrap">
-              <FormControlLabel
-                control={<Checkbox checked={keepTeam} onChange={(e) => setKeepTeam(e.target.checked)} />}
-                label="Manter time"
-              />
-              <FormControlLabel
-                control={<Checkbox checked={keepTasks} onChange={(e) => setKeepTasks(e.target.checked)} />}
-                label="Manter tarefas (sem datas)"
-              />
-              <FormControlLabel
-                control={<Checkbox checked={keepEvents} onChange={(e) => setKeepEvents(e.target.checked)} />}
-                label="Manter eventos"
-              />
-              <FormControlLabel
-                control={<Checkbox checked={keepConfig} onChange={(e) => setKeepConfig(e.target.checked)} />}
-                label="Manter configurações"
-              />
-            </Stack>
-          </Stack>
+          <NewScheduleOptions
+            keepTeam={keepTeam}
+            keepTasks={keepTasks}
+            keepEvents={keepEvents}
+            keepConfig={keepConfig}
+            onKeepTeamChange={setKeepTeam}
+            onKeepTasksChange={setKeepTasks}
+            onKeepEventsChange={setKeepEvents}
+            onKeepConfigChange={setKeepConfig}
+            className={styles.section}
+          />
         </DialogContent>
         <DialogActions>
           <Button onClick={handleClose}>Fechar</Button>

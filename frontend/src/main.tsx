@@ -6,6 +6,7 @@ import './index.css';
 import App from './App.tsx';
 import { createAppStore } from './app/store';
 import { ensureActiveSprint } from './app/sprintLibrary';
+import { normalizePersistedState } from './app/sprintHydrator';
 
 const theme = createTheme({
   palette: {
@@ -27,7 +28,7 @@ const requestedSprintId = pathMatch?.[1];
 
 const bootstrap = async () => {
   const { state: preloadedState } = await ensureActiveSprint(requestedSprintId);
-  const store = createAppStore(preloadedState);
+  const store = createAppStore(normalizePersistedState(preloadedState));
 
   createRoot(document.getElementById('root')!).render(
     <StrictMode>

@@ -1,12 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Alert, Button, Card, CardContent, Typography } from '@mui/material';
 import { useAppDispatch, useAppSelector } from '../../app/hooks';
-import { updateSprint } from '../../app/store/slices/sprintSlice';
-import { replaceCalendar } from '../../app/store/slices/calendarSlice';
-import { replaceEvents } from '../../app/store/slices/eventsSlice';
-import { replaceMembers } from '../../app/store/slices/membersSlice';
-import { replaceTasks } from '../../app/store/slices/tasksSlice';
-import { updateConfig } from '../../app/store/slices/configSlice';
+import { hydrateStoreFromState } from '../../app/sprintHydrator';
 import type { RootPersistedState } from '../../domain/types';
 import styles from './ImportExportTab.module.css';
 
@@ -65,26 +60,21 @@ export function ImportExportTab() {
         setError('Arquivo inválido ou malformado.');
         return;
       }
-      dispatch(updateSprint(data.sprint));
-      dispatch(
-        replaceCalendar({
+      const importedEvents = Array.isArray(data.events) ? data.events : data.events?.items ?? [];
+      const nextState: RootPersistedState = {
+        ...state,
+        sprint: data.sprint,
+        calendar: {
           nonWorkingDaysManual: data.nonWorkingDaysManual ?? [],
           nonWorkingDaysRemoved: data.nonWorkingDaysRemoved ?? [],
           daySchedules: data.daySchedules ?? [],
-        }),
-      );
-      if (Array.isArray(data.events)) {
-        dispatch(replaceEvents(data.events));
-      } else if (data.events?.items) {
-        dispatch(replaceEvents(data.events.items));
-      }
-      if (Array.isArray(data.members)) {
-        dispatch(replaceMembers(data.members));
-      }
-      if (Array.isArray(data.tasks)) {
-        dispatch(replaceTasks(data.tasks));
-      }
-      dispatch(updateConfig(data.globalConfig));
+        },
+        events: { items: importedEvents },
+        members: { items: data.members ?? [] },
+        tasks: { items: data.tasks ?? [] },
+        config: { value: data.globalConfig },
+      };
+      hydrateStoreFromState(dispatch, nextState);
       setError(null);
       setInfo('Importação concluída. Estado atualizado.');
     } catch (err) {

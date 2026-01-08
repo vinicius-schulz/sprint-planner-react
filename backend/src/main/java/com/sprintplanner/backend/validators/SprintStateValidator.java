@@ -1,4 +1,4 @@
-package com.sprintplanner.backend.component;
+package com.sprintplanner.backend.validators;
 
 import com.sprintplanner.backend.domain.EventItem;
 import com.sprintplanner.backend.domain.Member;
@@ -11,7 +11,9 @@ import java.time.format.DateTimeParseException;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.web.server.ResponseStatusException;
 
 @Component
 public class SprintStateValidator {
@@ -51,6 +53,13 @@ public class SprintStateValidator {
     }
 
     return null;
+  }
+
+  public void validateOrThrow(RootPersistedState state) {
+    String validation = validate(state);
+    if (validation != null) {
+      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, validation);
+    }
   }
 
   private String validateSprint(SprintState sprint) {

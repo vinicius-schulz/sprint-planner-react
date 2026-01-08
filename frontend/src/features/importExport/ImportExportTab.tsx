@@ -74,7 +74,7 @@ export function ImportExportTab() {
         tasks: { items: data.tasks ?? [] },
         config: { value: data.globalConfig },
       };
-      hydrateStoreFromState(dispatch, nextState);
+      hydrateStoreFromState(dispatch, nextState, { persist: true });
       setError(null);
       setInfo('Importação concluída. Estado atualizado.');
     } catch (err) {

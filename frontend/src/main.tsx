@@ -1,12 +1,9 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
-import { Provider } from 'react-redux';
 import { ThemeProvider, CssBaseline, createTheme } from '@mui/material';
 import './index.css';
 import App from './App.tsx';
-import { createAppStore } from './app/store';
-import { ensureActiveSprint } from './app/sprintLibrary';
-import { normalizePersistedState } from './app/sprintHydrator';
+import { SprintStoreProvider } from './app/store';
 
 const theme = createTheme({
   palette: {
@@ -23,23 +20,13 @@ const theme = createTheme({
   },
 });
 
-const pathMatch = window.location.pathname.match(/^\/(?:plan|acomp)\/([^/]+)/);
-const requestedSprintId = pathMatch?.[1];
-
-const bootstrap = async () => {
-  const { state: preloadedState } = await ensureActiveSprint(requestedSprintId);
-  const store = createAppStore(normalizePersistedState(preloadedState));
-
-  createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <Provider store={store}>
-        <ThemeProvider theme={theme}>
-          <CssBaseline />
-          <App />
-        </ThemeProvider>
-      </Provider>
-    </StrictMode>,
-  );
-};
-
-void bootstrap();
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <SprintStoreProvider>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <App />
+      </ThemeProvider>
+    </SprintStoreProvider>
+  </StrictMode>,
+);

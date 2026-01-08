@@ -1,6 +1,12 @@
-import { useDispatch, useSelector } from 'react-redux';
-import type { TypedUseSelectorHook } from 'react-redux';
-import type { AppDispatch, RootState } from './store';
+import type { RootState, AppDispatch } from './store';
+import { useSprintStore } from './store';
 
-export const useAppDispatch: () => AppDispatch = useDispatch;
-export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
+export const useAppDispatch = (): AppDispatch => {
+  const { dispatch } = useSprintStore();
+  return dispatch;
+};
+
+export const useAppSelector = <T>(selector: (state: RootState) => T): T => {
+  const { state } = useSprintStore();
+  return selector(state);
+};

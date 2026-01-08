@@ -1,4 +1,3 @@
-import { createSelector } from '@reduxjs/toolkit';
 import { dateRange, isWeekend, toDate, toISODate } from './dateUtils';
 import { computeDayHours, generateDefaultPeriods } from './workingCalendar';
 import type {
@@ -678,40 +677,23 @@ export const computeTaskSchedules = (
 };
 
 // Selectors helpers
-export const selectWorkingCalendar = createSelector(
-  [(state: RootPersistedState) => state.sprint, (state: RootPersistedState) => state.calendar],
-  (sprint, calendar) => buildWorkingCalendar(sprint, calendar),
-);
+export const selectWorkingCalendar = (state: RootPersistedState) =>
+  buildWorkingCalendar(state.sprint, state.calendar);
 
-export const selectWorkingHours = createSelector(
-  [
-    selectWorkingCalendar,
-    (state: RootPersistedState) => state.config.value,
-    (state: RootPersistedState) => state.events.items,
-    (state: RootPersistedState) => state.calendar,
-  ],
-  (calendarResult, config, events, calendar) =>
-    computeWorkingHours(config, calendarResult.workingDays, events, calendar),
-);
+export const selectWorkingHours = (state: RootPersistedState) => {
+  const calendarResult = selectWorkingCalendar(state);
+  return computeWorkingHours(state.config.value, calendarResult.workingDays, state.events.items, state.calendar);
+};
 
-export const selectTeamCapacity = createSelector(
-  [
-    (state: RootPersistedState) => state.members.items,
-    selectWorkingHours,
-    (state: RootPersistedState) => state.config.value,
-  ],
-  (members, workingHours, config) => computeTeamCapacity(members, workingHours, config),
-);
+export const selectTeamCapacity = (state: RootPersistedState) =>
+  computeTeamCapacity(state.members.items, selectWorkingHours(state), state.config.value);
 
-export const selectTaskSchedules = createSelector(
-  [
-    (state: RootPersistedState) => state.tasks.items,
-    (state: RootPersistedState) => state.sprint,
-    (state: RootPersistedState) => state.calendar,
-    (state: RootPersistedState) => state.config.value,
-    (state: RootPersistedState) => state.members.items,
-    (state: RootPersistedState) => state.events.items,
-  ],
-  (tasks, sprint, calendarState, config, members, events) =>
-    computeTaskSchedules(tasks, sprint, calendarState, config, members, events),
-);
+export const selectTaskSchedules = (state: RootPersistedState) =>
+  computeTaskSchedules(
+    state.tasks.items,
+    state.sprint,
+    state.calendar,
+    state.config.value,
+    state.members.items,
+    state.events.items,
+  );

@@ -94,7 +94,7 @@ export function SprintListPage() {
   const handleDelete = async (id: string) => {
     const sprint = sprints.find((s) => s.id === id);
     const name = sprint?.title || id;
-    const confirmed = window.confirm(`Excluir ${name}? Essa ação remove apenas o rascunho local desta sprint.`);
+    const confirmed = window.confirm(`Excluir ${name}? Essa ação remove a sprint do servidor.`);
     if (!confirmed) return;
     await removeSprint(id);
     await refresh();
